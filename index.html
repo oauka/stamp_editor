@@ -1,0 +1,1985 @@
+<meta charset="utf-8">
+<title>스탬프 다이어리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@300;400;500;700&display=swap">
+
+<style>
+  :root{
+    --bg:#FFFFFF;
+    --line:#E2E2E2;
+    --line-strong:#111111;
+    --ink:#111111;
+    --ink-soft:#6B6B6B;
+    --ink-faint:#A8A8A8;
+    --sun:#C8322A;
+    --sat:#2F5AA8;
+    --focus:#2F5AA8;
+    --pad:clamp(10px,2.5vw,34px);
+    --sans:"Gothic A1","Helvetica Neue",Arial,sans-serif;
+    /* Pretendard는 외부 CDN에서 못 받아오므로(아티팩트 CSP), 설치돼 있으면 로컬 것을 쓰고
+       없으면 Gothic A1로 떨어진다 — 어느 쪽이든 0에 점/사선이 없다 */
+    --mono:"Pretendard Variable",Pretendard,"Gothic A1",-apple-system,"Segoe UI","Malgun Gothic",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    background:#EDEDED; color:var(--ink); font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;
+    margin:0; padding:0;                 /* 브라우저 기본 여백 제거 — 띠가 창 끝에 붙게 */
+    display:flex; flex-direction:column; align-items:center; gap:14px;
+  }
+
+  #root{
+    width:100%; padding-bottom:var(--pad);
+    display:flex; flex-direction:column; align-items:center; gap:14px;
+  }
+
+  /* 맨 위 저작권 줄 */
+  /* 창 끝까지 붙는 띠 — 좁아지면 줄바꿈해서 가로 스크롤이 생기지 않게 한다 */
+  .legal{
+    width:100%; padding:6px var(--pad);
+    background:#FFFFFF; border-bottom:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:center;
+    flex-wrap:wrap; gap:2px 16px;
+    font-size:10px; color:#8A8A8A; line-height:1.6;
+  }
+  .legal span{min-width:0}
+  .legal a{color:#8A8A8A}
+
+  /* 저작권 줄 맨 앞의 제품명 */
+  .legal .brand{text-transform:uppercase; font-weight:700; color:#5A5A5A; letter-spacing:.04em}
+
+  /* 상단 버튼 줄은 달력과 같은 세로줄 안에 있어서, 편집 패널이 열리면 달력과 함께 움직인다 */
+  .bar{width:100%; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+  .bar .now{margin-right:auto; font-family:var(--mono); font-size:12px; letter-spacing:.12em; color:#767676}
+  .btn{
+    font-family:var(--mono); font-size:12px; color:#3B3B3B;
+    background:#FFFFFF; border:1px solid #CFCFCF; border-radius:2px;
+    padding:6px 12px; cursor:pointer;
+  }
+  .btn:hover{border-color:#8E8E8E}
+  .btn[disabled]{opacity:.5; cursor:default}
+  .sep{width:1px; height:18px; background:#CFCFCF; margin:0 2px}
+  .toggle{
+    grid-column:2; grid-row:1; justify-self:start; align-self:center;
+    display:flex; align-items:center; gap:7px; cursor:pointer;
+    font-size:12px; color:#3B3B3B; user-select:none;
+  }
+  .toggle input{width:14px; height:14px; accent-color:#111; cursor:pointer; margin:0}
+  .bar .toggle{grid-column:auto; grid-row:auto; margin-left:auto}
+  /* 달력과 그 아래 버튼 줄을 한 덩어리로 — 달력이 줄어들면 버튼 줄도 같이 줄어든다 */
+  .calbody{grid-column:1; grid-row:2; min-width:0; display:flex; flex-direction:column; gap:12px}
+  .footbar{width:100%; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .footbar .right{margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .workspace.noeditor{grid-template-columns:var(--calw, minmax(0,1fr))}
+  .notice{font-size:11px; color:var(--sun)}
+  .btn:focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+
+  /* 버튼 줄(1행) 아래에 달력과 편집 패널이 같은 행에 놓여, 패널 윗선이 달력 윗선과 맞는다 */
+  .workspace{
+    width:100%; padding:0 var(--pad);
+    display:grid; grid-template-columns:var(--calw, minmax(0,1fr)) 372px;
+    align-items:start; justify-content:center;
+    column-gap:clamp(8px,1.2vw,16px); row-gap:14px;
+  }
+  .calcol{display:contents}
+  .bar{grid-column:1; grid-row:1}
+  .sheet{grid-column:1; grid-row:2}
+  .sheet{
+    background:var(--bg);
+    padding:clamp(16px,2.2vw,32px);
+    box-shadow:0 1px 2px rgba(0,0,0,.12), 0 14px 34px -18px rgba(0,0,0,.35);
+    display:flex; flex-direction:column;
+  }
+  /* 달력과 같은 행에서 높이를 함께 늘려 항상 아래 끝선이 맞는다 */
+  .editorpane{
+    grid-column:2; grid-row:2; width:372px; flex:none;
+    align-self:start; display:flex;
+    background:var(--bg); font-family:var(--sans);
+    border:1px solid var(--line);
+    box-shadow:0 1px 2px rgba(0,0,0,.12), 0 14px 34px -18px rgba(0,0,0,.35);
+  }
+  /* 패널은 따로 스크롤하지 않는다 — 높이가 모자라면 페이지 전체가 스크롤된다 */
+  .pane-inner{display:flex; flex-direction:column; width:100%; min-width:0}
+  .pane-body{flex:1; display:flex; flex-direction:column}
+  /* 도형에 따라 컨트롤 수가 줄어도 버튼은 항상 패널 맨 아래에 붙는다 */
+  .pane-actions{margin-top:auto}
+  .head{display:flex; align-items:baseline; gap:12px; padding-bottom:12px}
+  .head .m{font-family:var(--mono); font-weight:500; font-size:clamp(20px,2.4vw,28px); letter-spacing:.06em; line-height:1}
+  .head .y{margin-left:auto; font-family:var(--mono); font-size:13px; color:var(--ink-faint); letter-spacing:.14em}
+  .head .ko{font-family:var(--mono); font-size:clamp(20px,2.4vw,28px); line-height:1;
+    letter-spacing:.06em; font-variant-numeric:tabular-nums; color:var(--ink-soft)}
+
+  /* 칸 폭(--cw)은 화면 높이에 맞춰 스크립트가 정한다 — 창이 넓어져도 달력이 세로로 길어지지 않게 */
+  .cal{
+    display:grid; grid-template-columns:repeat(7, var(--cw, 1fr)); justify-content:center;
+    border-top:1px solid var(--line-strong); border-left:1px solid var(--line);
+  }
+  .dow{
+    font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-soft); text-align:center; padding:9px 0;
+    border-right:1px solid var(--line); border-bottom:1px solid var(--line);
+  }
+  .dow.s{color:var(--sun)}
+  .dow.t{color:var(--sat)}
+
+  .cell{
+    position:relative; background:#FFFFFF;
+    border-right:1px solid var(--line); border-bottom:1px solid var(--line);
+    aspect-ratio:1 / 1.3; padding:6px;
+    display:flex; flex-direction:column; gap:2px; min-width:0;
+  }
+  /* 우표가 있는 칸에 마우스를 올리면 우측 상단에 삭제 버튼 */
+  .delbtn{
+    position:absolute; top:3px; right:3px; z-index:2;
+    width:17px; height:17px; padding:0; line-height:1;
+    display:none; align-items:center; justify-content:center;
+    font-family:var(--sans); font-size:11px; color:#FFFFFF;
+    background:rgba(17,17,17,.72); border:0; border-radius:50%; cursor:pointer;
+  }
+  .cell:hover .delbtn, .cell:focus-within .delbtn{display:flex}
+  .delbtn:hover{background:var(--sun)}
+  .delbtn:focus-visible{outline:2px solid var(--focus); outline-offset:1px}
+  .cell.drop{outline:2px dashed var(--focus); outline-offset:-3px}
+  .cell.sel{outline:2px solid var(--focus); outline-offset:-2px}
+  .n{font-family:var(--mono); font-size:13px; font-variant-numeric:tabular-nums; line-height:1; color:var(--ink)}
+  .cell.s .n{color:var(--sun)}
+  .cell.t .n{color:var(--sat)}
+  .cell.out .n{color:var(--ink-faint)}
+
+  /* 날짜 숫자 아래부터 칸 끝까지가 우표 영역 — 그 안에서 가운데 정렬된다 */
+  .slotbtn{
+    flex:1; min-height:0; padding:0; border:0; background:transparent; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; width:100%;
+  }
+  .slotbtn:focus-visible{outline:2px solid var(--focus); outline-offset:-2px}
+  .slotbtn canvas{width:100%; height:100%; display:block}
+
+  .foot{
+    display:flex; justify-content:space-between; padding-top:10px; gap:12px;
+    font-family:var(--mono); font-size:10px; letter-spacing:.1em; color:var(--ink-faint);
+  }
+  .foot .ko{font-family:var(--sans); letter-spacing:0}
+
+  @media (max-width:900px){
+    .cell{padding:3px}
+    .n{font-size:11px}
+    .dow{font-size:9px; letter-spacing:.04em; padding:6px 0}
+    .head .m, .head .ko{font-size:clamp(15px,2.2vw,22px)}
+    .sheet{padding:10px}
+    .btn{padding:5px 8px; font-size:11px}
+  }
+  @media print{
+    body{background:#fff; padding:0}
+    .bar, .editorpane, .toggle, .footbar, .legal{display:none}
+    .workspace{display:block}
+    .calcol{display:block}
+    .sheet{box-shadow:none; max-width:none; width:100%; padding:0}
+    .cell.sel{outline:none}
+  }
+
+  /* ── 우표 메이커에서 그대로 가져온 컨트롤 스타일 ── */
+  input[type="range"].hue-slider{
+    -webkit-appearance:none; appearance:none; width:100%; height:14px; border-radius:7px;
+    background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);
+    outline:none; cursor:pointer;
+  }
+  input[type="range"].hue-slider::-webkit-slider-thumb{
+    -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+    background:#fff; border:2px solid #333; box-shadow:0 0 2px rgba(0,0,0,.4); cursor:pointer;
+  }
+  input[type="range"].hue-slider::-moz-range-thumb{
+    width:16px; height:16px; border-radius:50%; background:#fff; border:2px solid #333; cursor:pointer;
+  }
+  input[type="range"].ui-slider{
+    -webkit-appearance:none; appearance:none; width:100%; height:16px;
+    background:transparent; outline:none; cursor:pointer;
+  }
+  input[type="range"].ui-slider::-webkit-slider-runnable-track{
+    height:6px; border-radius:3px;
+    background:linear-gradient(to right,
+      var(--thumb-color,#B88A5A) 0%, var(--thumb-color,#B88A5A) var(--fill-percent,0%),
+      var(--track-color,#E8DCC3) var(--fill-percent,0%), var(--track-color,#E8DCC3) 100%);
+  }
+  input[type="range"].ui-slider::-webkit-slider-thumb{
+    -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+    background:var(--thumb-color,#B88A5A); border:2px solid rgba(0,0,0,.15); cursor:pointer; margin-top:-5px;
+  }
+  input[type="range"].ui-slider::-moz-range-track{
+    height:6px; border-radius:3px;
+    background:linear-gradient(to right,
+      var(--thumb-color,#B88A5A) 0%, var(--thumb-color,#B88A5A) var(--fill-percent,0%),
+      var(--track-color,#E8DCC3) var(--fill-percent,0%), var(--track-color,#E8DCC3) 100%);
+  }
+  input[type="range"].ui-slider::-moz-range-thumb{
+    width:16px; height:16px; border-radius:50%; background:var(--thumb-color,#B88A5A);
+    border:2px solid rgba(0,0,0,.15); cursor:pointer;
+  }
+  input[type="number"]{-moz-appearance:textfield}
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none; margin:0}
+</style>
+
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.25.6/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+const { useRef, useState, useEffect, useLayoutEffect, useCallback, useMemo } = React;
+
+/* ═══════════════════════════════════════════════════════════
+   아래 도형·그리기 코드는 "우표 메이커"에서 그대로 가져온 것 —
+   톱니 경로, 하트/꽃/별 곡선, 달력 틀, drawStamp 전부 동일하다.
+   ═══════════════════════════════════════════════════════════ */
+
+const Icon = ({ children, size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{children}</svg>
+);
+const Upload = ({ size }) => (
+  <Icon size={size}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+  </Icon>
+);
+const RotateCcw = ({ size }) => (
+  <Icon size={size}>
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <polyline points="3 3 3 8 8 8" />
+  </Icon>
+);
+const Check = ({ size }) => (<Icon size={size}><polyline points="20 6 9 17 4 12" /></Icon>);
+const ImagePlaceholderIcon = ({ size }) => (
+  <Icon size={size}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" />
+  </Icon>
+);
+
+// 네 변 가운데에만 안쪽으로 오목한 반원 톱니를 배치하고 모서리엔 직선을 남긴다
+function traceStampPath(ctx, x, y, w, h, r, spacing, margin, centersOut, skipBeginPath) {
+  const edges = [
+    { p0: [x, y], d: [1, 0], len: w },
+    { p0: [x + w, y], d: [0, 1], len: h },
+    { p0: [x + w, y + h], d: [-1, 0], len: w },
+    { p0: [x, y + h], d: [0, -1], len: h },
+  ];
+  if (!skipBeginPath) ctx.beginPath();
+  ctx.moveTo(x, y);
+  edges.forEach((edge) => {
+    const usable = Math.max(0, edge.len - margin * 2);
+    const count = Math.max(1, Math.round(usable / spacing));
+    const step = usable / count;
+    const angleD = Math.atan2(edge.d[1], edge.d[0]);
+    for (let i = 0; i < count; i++) {
+      const tc = margin + i * step + step / 2;
+      const cx = edge.p0[0] + edge.d[0] * tc;
+      const cy = edge.p0[1] + edge.d[1] * tc;
+      ctx.lineTo(cx - edge.d[0] * r, cy - edge.d[1] * r);
+      ctx.arc(cx, cy, r, angleD + Math.PI, angleD, true);
+      if (centersOut) centersOut.push([cx, cy]);
+    }
+    ctx.lineTo(edge.p0[0] + edge.d[0] * edge.len, edge.p0[1] + edge.d[1] * edge.len);
+  });
+  ctx.closePath();
+}
+
+function makeHeartPoints(coeffs, xscale, steps = 160) {
+  const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * Math.PI * 2;
+    const x = xscale * Math.pow(Math.sin(t), 3);
+    let y = 0;
+    coeffs.forEach((c, idx) => { y += c * Math.cos((idx + 1) * t); });
+    pts.push([x, y]);
+  }
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  pts.forEach(([x, y]) => {
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  });
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  const half = Math.max(maxX - minX, maxY - minY) / 2;
+  return pts.map(([x, y]) => [(x - cx) / half, (y - cy) / half]);
+}
+const HEART_POINTS = makeHeartPoints([-13, 5, 2, 1], 16);
+const HEART_POINTS_2 = makeHeartPoints([-17.965, 5.548, 2.762, 0.330], 20.388);
+const HEART_POINTS_3 = makeHeartPoints([-16.227, 4.469, 3.002, -0.082], 17.667);
+const HEART_VARIANTS = [HEART_POINTS, HEART_POINTS_2, HEART_POINTS_3];
+
+function makeFlowerPoints(petals, { floor = 0.3, exponent = 0.55, notch = 0, notchWidth = 0.35, steps = 300 } = {}) {
+  const petalAngle = (Math.PI * 2) / petals;
+  const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * Math.PI * 2;
+    const local = (((t % petalAngle) + petalAngle) % petalAngle) - petalAngle / 2;
+    const u = local / (petalAngle / 2);
+    const shape = Math.cos(u * (Math.PI / 2));
+    let r = floor + (1 - floor) * Math.pow(Math.max(0, shape), exponent);
+    if (notch) r -= notch * Math.exp(-Math.pow(u / notchWidth, 2));
+    pts.push([r * Math.cos(t), r * Math.sin(t)]);
+  }
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  pts.forEach(([x, y]) => {
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  });
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  const half = Math.max(maxX - minX, maxY - minY) / 2;
+  return pts.map(([x, y]) => [(x - cx) / half, (y - cy) / half]);
+}
+const FLOWER_POINTS_4 = makeFlowerPoints(4, { floor: 0.42, exponent: 0.6, notch: 0.28, notchWidth: 0.32 });
+const FLOWER_POINTS_5 = makeFlowerPoints(5, { floor: 0.3, exponent: 0.55 });
+const FLOWER_POINTS_6 = makeFlowerPoints(6, { floor: 0.35, exponent: 0.55 });
+const FLOWER_VARIANTS_BY_PETALS = { 4: FLOWER_POINTS_4, 5: FLOWER_POINTS_5, 6: FLOWER_POINTS_6 };
+const FLOWER_POINTS = FLOWER_POINTS_5;
+
+function makeStarVertices(spikes = 5, innerRatio = 0.5) {
+  const pts = [];
+  for (let i = 0; i < spikes * 2; i++) {
+    const rr = i % 2 === 0 ? 1 : innerRatio;
+    const angle = -Math.PI / 2 + (i * Math.PI) / spikes;
+    pts.push([rr * Math.cos(angle), rr * Math.sin(angle)]);
+  }
+  return pts;
+}
+function normalizeClosedPoints(pts) {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  pts.forEach(([x, y]) => {
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  });
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  const half = Math.max(maxX - minX, maxY - minY) / 2;
+  const norm = pts.map(([x, y]) => [(x - cx) / half, (y - cy) / half]);
+  norm.push(norm[0]);
+  return norm;
+}
+function roundPolygonCorners(points, radius, stepsPerCorner = 10) {
+  const n = points.length;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const B = points[i], P = points[(i - 1 + n) % n], N = points[(i + 1) % n];
+    const d1v = [P[0] - B[0], P[1] - B[1]], d2v = [N[0] - B[0], N[1] - B[1]];
+    const d1 = Math.hypot(d1v[0], d1v[1]) || 1, d2 = Math.hypot(d2v[0], d2v[1]) || 1;
+    const ea = [d1v[0] / d1, d1v[1] / d1], eb = [d2v[0] / d2, d2v[1] / d2];
+    const cosang = Math.max(-1, Math.min(1, ea[0] * eb[0] + ea[1] * eb[1]));
+    const theta = Math.acos(cosang);
+    if (theta < 1e-6 || theta > Math.PI - 1e-6) { out.push(B); continue; }
+    const req = radius / Math.tan(theta / 2);
+    const d = Math.min(req, d1 * 0.48, d2 * 0.48);
+    const rEff = d * Math.tan(theta / 2);
+    const T1 = [B[0] + ea[0] * d, B[1] + ea[1] * d];
+    const T2 = [B[0] + eb[0] * d, B[1] + eb[1] * d];
+    let bx = ea[0] + eb[0], by = ea[1] + eb[1];
+    const bl = Math.hypot(bx, by) || 1;
+    bx /= bl; by /= bl;
+    const center = [B[0] + bx * (rEff / Math.sin(theta / 2)), B[1] + by * (rEff / Math.sin(theta / 2))];
+    const a1 = Math.atan2(T1[1] - center[1], T1[0] - center[0]);
+    const a2 = Math.atan2(T2[1] - center[1], T2[0] - center[0]);
+    const diff = ((a2 - a1 + Math.PI) % (2 * Math.PI)) - Math.PI;
+    for (let s = 0; s <= stepsPerCorner; s++) {
+      const a = a1 + (diff * s) / stepsPerCorner;
+      out.push([center[0] + rEff * Math.cos(a), center[1] + rEff * Math.sin(a)]);
+    }
+  }
+  return out;
+}
+const STAR_POINTS = normalizeClosedPoints(makeStarVertices(5, 0.5));
+const STAR_POINTS_2 = normalizeClosedPoints(roundPolygonCorners(makeStarVertices(5, 0.5), 0.09, 10));
+const STAR_VARIANTS = [STAR_POINTS, STAR_POINTS_2];
+
+function lineIntersect(p1, p2, p3, p4) {
+  const [x1, y1] = p1, [x2, y2] = p2, [x3, y3] = p3, [x4, y4] = p4;
+  const d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (Math.abs(d) < 1e-6) return null;
+  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
+  return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
+}
+
+// 일러스트레이터의 "패스 이동(각진 연결)"과 같은 방식으로 곡선 도형을 안쪽으로 오프셋한다
+function traceCurvePath(ctx, x, y, w, h, insetPx, skipBeginPath, points) {
+  const cx = x + w / 2, cy = y + h / 2, hw = w / 2, hh = h / 2;
+  const base = points.map(([nx, ny]) => [cx + nx * hw, cy + ny * hh]);
+  const n = base.length;
+  if (!skipBeginPath) ctx.beginPath();
+  if (!insetPx) {
+    base.forEach(([px, py], i) => (i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)));
+    ctx.closePath();
+    return;
+  }
+  const edgeCount = n - 1;
+  const offsetEdges = [];
+  for (let i = 0; i < edgeCount; i++) {
+    const p0 = base[i], p1 = base[i + 1];
+    let dx = p1[0] - p0[0], dy = p1[1] - p0[1];
+    const dl = Math.hypot(dx, dy) || 1;
+    dx /= dl; dy /= dl;
+    let ex = -dy, ey = dx;
+    const mx = (p0[0] + p1[0]) / 2, my = (p0[1] + p1[1]) / 2;
+    if (ex * (cx - mx) + ey * (cy - my) < 0) { ex = -ex; ey = -ey; }
+    offsetEdges.push({
+      a: [p0[0] + ex * insetPx, p0[1] + ey * insetPx],
+      b: [p1[0] + ex * insetPx, p1[1] + ey * insetPx],
+    });
+  }
+  const miterLimit = insetPx * 4;
+  let started = false;
+  const moveOrLine = ([px, py]) => {
+    if (!started) { ctx.moveTo(px, py); started = true; } else ctx.lineTo(px, py);
+  };
+  for (let i = 0; i < edgeCount; i++) {
+    const prevEdge = offsetEdges[(i - 1 + edgeCount) % edgeCount];
+    const curEdge = offsetEdges[i];
+    const inter = lineIntersect(prevEdge.a, prevEdge.b, curEdge.a, curEdge.b);
+    if (inter && Math.hypot(inter[0] - base[i][0], inter[1] - base[i][1]) < miterLimit) moveOrLine(inter);
+    else { moveOrLine(prevEdge.b); moveOrLine(curEdge.a); }
+  }
+  ctx.closePath();
+}
+
+const PERFORATION_LEVELS = {
+  small: { label: "좁게", rMm: 0.42 },
+  medium: { label: "보통", rMm: 0.62 },
+  large: { label: "넓게", rMm: 0.9 },
+};
+const PERFORATION_SPACING_RATIO = 3.1;
+const PERFORATION_CORNER_MARGIN_RATIO = 1.4;
+const BORDER_MM = 1.3;
+const BORDER_SEAM_INSET_MM = 0.3;
+const COLOR_PALETTE = ["#FFFFFF", "#000000"];
+const DEFAULT_SIZE = {
+  stamp: { w: 25, h: 28 }, heart: { w: 25, h: 25 }, flower: { w: 25, h: 25 },
+  star: { w: 25, h: 25 }, calendar: { w: 25, h: 25 },
+};
+
+function curvePointsToIconPath(points, size = 26, pad = 3) {
+  const inner = size - pad * 2;
+  return points.map(([nx, ny], i) => {
+    const px = pad + ((nx + 1) / 2) * inner;
+    const py = pad + ((ny + 1) / 2) * inner;
+    return `${i === 0 ? "M" : "L"}${px.toFixed(2)},${py.toFixed(2)}`;
+  }).join(" ") + " Z";
+}
+
+function hsvToRgb(h, s, v) {
+  const c = v * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = v - c;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) { r = c; g = x; } else if (h < 120) { r = x; g = c; }
+  else if (h < 180) { g = c; b = x; } else if (h < 240) { g = x; b = c; }
+  else if (h < 300) { r = x; b = c; } else { r = c; b = x; }
+  return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+}
+function rgbToHex(r, g, b) {
+  return "#" + [r, g, b].map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+function hsvToHex(h, s, v) { const [r, g, b] = hsvToRgb(h, s, v); return rgbToHex(r, g, b); }
+function hexToRgb(hex) {
+  const clean = (hex || "").replace("#", "").trim();
+  const full = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean;
+  const num = parseInt(full, 16);
+  if (full.length !== 6 || isNaN(num)) return [0, 0, 0];
+  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+}
+function rgbToHsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  let h = 0;
+  if (d !== 0) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60; if (h < 0) h += 360;
+  }
+  return { h, s: max === 0 ? 0 : d / max, v: max };
+}
+function hexToHsv(hex) { const [r, g, b] = hexToRgb(hex); return rgbToHsv(r, g, b); }
+
+const SLIDER_LABEL_WIDTH = 78, SLIDER_ROW_GAP = 8, SLIDER_SLOT_WIDTH = 58;
+
+function SliderRow({ label, value, min, max, step, unit, onChange, T, swatch }) {
+  const pct = ((value - min) / (max - min)) * 100;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: SLIDER_ROW_GAP, marginBottom: 10 }}>
+      <span style={{ fontSize: 12, color: T.muted, width: SLIDER_LABEL_WIDTH, flexShrink: 0, whiteSpace: "nowrap" }}>{label}</span>
+      <input type="range" className="ui-slider" min={min} max={max} step={step} value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        style={{ flex: 1, minWidth: 0, "--track-color": T.sliderTrack, "--thumb-color": T.accent, "--fill-percent": `${pct}%` }} />
+      <span style={{ fontSize: 12, color: T.muted, width: 42, textAlign: "right", flexShrink: 0 }}>{value.toFixed(1)}{unit}</span>
+      <span style={{ width: SLIDER_SLOT_WIDTH, display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>{swatch || null}</span>
+    </div>
+  );
+}
+function SwatchBox({ color, onClick, active, T, width = 34, height = 26 }) {
+  return (
+    <button type="button" onClick={onClick} title="색상 변경"
+      style={{ width, height, borderRadius: 4, border: active ? `2px solid ${T.accent}` : `1px solid ${T.border}`,
+        background: color, cursor: "pointer", padding: 0, flexShrink: 0 }} />
+  );
+}
+
+function roundedRectPath(ctx, x, y, w, h, r) {
+  const rad = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.lineTo(x + w - rad, y);
+  ctx.arcTo(x + w, y, x + w, y + rad, rad);
+  ctx.lineTo(x + w, y + h - rad);
+  ctx.arcTo(x + w, y + h, x + w - rad, y + h, rad);
+  ctx.lineTo(x + rad, y + h);
+  ctx.arcTo(x, y + h, x, y + h - rad, rad);
+  ctx.lineTo(x, y + rad);
+  ctx.arcTo(x, y, x + rad, y, rad);
+  ctx.closePath();
+}
+
+function calendarLayout(canvasW, canvasH, stampW, stampH, calendarInnerShape = "rect") {
+  const topMarginFrac = 0.14, bottomMarginFrac = 0.05;
+  const availH = canvasH * (1 - topMarginFrac - bottomMarginFrac);
+  const pxPerMm = Math.min(canvasW / stampW, availH / stampH);
+  const dispW = stampW * pxPerMm, dispH = stampH * pxPerMm;
+  const originX = (canvasW - dispW) / 2;
+  const originY = canvasH * topMarginFrac + (availH - dispH) / 2;
+  const cornerR = Math.min(dispW, dispH) * 0.11;
+  const headerH = dispH * 0.15;
+  const pad = Math.min(dispW, dispH) * 0.10;
+  const isCurveInner = calendarInnerShape === "heart" || calendarInnerShape === "flower" || calendarInnerShape === "star";
+  const imgPad = isCurveInner ? pad * 0.35 : pad;
+  const imgX = originX + imgPad, imgY = originY + headerH + imgPad;
+  const imgW = Math.max(1, dispW - imgPad * 2);
+  const imgH = Math.max(1, dispH - headerH - imgPad * 2);
+  return { pxPerMm, dispW, dispH, originX, originY, cornerR, headerH, pad, imgPad, imgX, imgY, imgW, imgH };
+}
+
+function drawCalendarFrame(ctx, {
+  canvasW, canvasH, stampW, stampH, img, offX, offY, scale, rotation, checker,
+  calendarBorderColor = "#333333", calendarHeaderColor = "#F4D9A0", calendarSpringColor = "#2E3A46",
+  calendarBorderWidthMm = 1.0, calendarInnerShape = "rect",
+  heartStyle = 1, petalCount = 5, starStyle = 1, perforation = "medium",
+}) {
+  ctx.clearRect(0, 0, canvasW, canvasH);
+  const { pxPerMm, dispW, dispH, originX, originY, cornerR, headerH, imgX, imgY, imgW, imgH } =
+    calendarLayout(canvasW, canvasH, stampW, stampH, calendarInnerShape);
+  const borderWidthPx = Math.max(1, calendarBorderWidthMm * pxPerMm);
+
+  ctx.save();
+  roundedRectPath(ctx, originX, originY, dispW, dispH, cornerR);
+  ctx.clip();
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(originX, originY, dispW, dispH);
+  ctx.fillStyle = calendarHeaderColor;
+  ctx.fillRect(originX, originY, dispW, headerH);
+
+  ctx.save();
+  ctx.beginPath();
+  if (calendarInnerShape === "stamp") {
+    const level = PERFORATION_LEVELS[perforation] || PERFORATION_LEVELS.medium;
+    const r = Math.min(level.rMm * pxPerMm, Math.min(imgW, imgH) / 10);
+    traceStampPath(ctx, imgX, imgY, imgW, imgH, r, r * PERFORATION_SPACING_RATIO, r * PERFORATION_CORNER_MARGIN_RATIO, null, true);
+  } else if (calendarInnerShape === "heart" || calendarInnerShape === "flower" || calendarInnerShape === "star") {
+    const innerPoints = calendarInnerShape === "flower"
+      ? (FLOWER_VARIANTS_BY_PETALS[petalCount] || FLOWER_POINTS)
+      : calendarInnerShape === "star" ? (STAR_VARIANTS[starStyle - 1] || STAR_POINTS)
+      : (HEART_VARIANTS[heartStyle - 1] || HEART_POINTS);
+    const shapeSize = Math.min(imgW, imgH);
+    traceCurvePath(ctx, imgX + (imgW - shapeSize) / 2, imgY + (imgH - shapeSize) / 2, shapeSize, shapeSize, 0, true, innerPoints);
+  } else {
+    ctx.rect(imgX, imgY, imgW, imgH);
+  }
+  ctx.clip();
+
+  if (checker) {
+    const cs = 10;
+    for (let cy = imgY; cy < imgY + imgH; cy += cs) {
+      for (let cx = imgX; cx < imgX + imgW; cx += cs) {
+        const on = (Math.floor((cx - imgX) / cs) + Math.floor((cy - imgY) / cs)) % 2 === 0;
+        ctx.fillStyle = on ? "#FAFAFA" : "#DCDCDC";
+        ctx.fillRect(cx, cy, cs, cs);
+      }
+    }
+  }
+  if (img) {
+    ctx.save();
+    const cx = imgX + imgW / 2 + offX * imgW, cy = imgY + imgH / 2 + offY * imgH;
+    const baseScale = Math.max(imgW / img.naturalWidth, imgH / img.naturalHeight);
+    ctx.translate(cx, cy);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, (-img.naturalWidth * baseScale) / 2, (-img.naturalHeight * baseScale) / 2,
+      img.naturalWidth * baseScale, img.naturalHeight * baseScale);
+    ctx.restore();
+  }
+  ctx.restore();
+  ctx.restore();
+
+  ctx.strokeStyle = calendarBorderColor;
+  ctx.lineWidth = borderWidthPx;
+  roundedRectPath(ctx, originX, originY, dispW, dispH, cornerR);
+  ctx.stroke();
+
+  const springW = dispW * 0.092;
+  const springTopY = originY - dispH * 0.09;
+  const springBottomY = originY + headerH * 0.58;
+  [0.226, 0.774].forEach((fx) => {
+    const cx = originX + dispW * fx;
+    ctx.fillStyle = calendarSpringColor;
+    roundedRectPath(ctx, cx - springW / 2, springTopY, springW, springBottomY - springTopY, springW / 2);
+    ctx.fill();
+  });
+}
+
+function drawStamp(ctx, {
+  canvasW, canvasH, stampW, stampH, img, offX, offY, scale, rotation, checker,
+  shape = "stamp", heartStyle = 1, petalCount = 5, starStyle = 1,
+  calendarBorderColor = "#333333", calendarHeaderColor = "#F4D9A0", calendarSpringColor = "#2E3A46",
+  calendarBorderWidthMm = 1.0, calendarInnerShape = "rect",
+  perforation = "medium", borderOn = false, borderColor = "#FFFFFF",
+  lineBorderMode = "none", lineBorderWidthMm = 0.6, lineBorderWidthMm2 = 0.6,
+  lineBorderColor = "#FFFFFF", lineBorderColor2 = "#FFFFFF",
+  lineBorderInsetMm = 1.4, lineBorderInset2Mm = 3.0,
+}) {
+  if (shape === "calendar") {
+    drawCalendarFrame(ctx, {
+      canvasW, canvasH, stampW, stampH, img, offX, offY, scale, rotation, checker,
+      calendarBorderColor, calendarHeaderColor, calendarSpringColor,
+      calendarBorderWidthMm, calendarInnerShape, heartStyle, petalCount, starStyle, perforation,
+    });
+    return;
+  }
+  ctx.clearRect(0, 0, canvasW, canvasH);
+
+  const pxPerMm = Math.min(canvasW / stampW, canvasH / stampH);
+  const dispW = stampW * pxPerMm, dispH = stampH * pxPerMm;
+  const originX = (canvasW - dispW) / 2, originY = (canvasH - dispH) / 2;
+  const isStamp = shape === "stamp";
+
+  const level = PERFORATION_LEVELS[perforation] || PERFORATION_LEVELS.medium;
+  const r = Math.min(level.rMm * pxPerMm, Math.min(dispW, dispH) / 10);
+  const spacing = r * PERFORATION_SPACING_RATIO;
+  const margin = r * PERFORATION_CORNER_MARGIN_RATIO;
+
+  const curvePoints = shape === "flower" ? (FLOWER_VARIANTS_BY_PETALS[petalCount] || FLOWER_POINTS)
+    : shape === "star" ? (STAR_VARIANTS[starStyle - 1] || STAR_POINTS)
+    : (HEART_VARIANTS[heartStyle - 1] || HEART_POINTS);
+  const tracePath = (x, y, w, h, insetPx, centersOut, skipBeginPath) => {
+    if (isStamp) traceStampPath(ctx, x, y, w, h, r, spacing, margin, centersOut, skipBeginPath);
+    else traceCurvePath(ctx, x, y, w, h, insetPx, skipBeginPath, curvePoints);
+  };
+
+  const borderPx = Math.min(BORDER_MM * pxPerMm, Math.min(dispW, dispH) / 3);
+  const contentX = originX + borderPx, contentY = originY + borderPx;
+  const contentW = Math.max(1, dispW - borderPx * 2), contentH = Math.max(1, dispH - borderPx * 2);
+
+  const centers = [];
+  ctx.save();
+  tracePath(originX, originY, dispW, dispH, 0, centers);
+  ctx.clip();
+
+  if (checker) {
+    const cs = 10;
+    for (let cy = originY; cy < originY + dispH; cy += cs) {
+      for (let cx = originX; cx < originX + dispW; cx += cs) {
+        const on = (Math.floor((cx - originX) / cs) + Math.floor((cy - originY) / cs)) % 2 === 0;
+        ctx.fillStyle = on ? "#FAFAFA" : "#DCDCDC";
+        ctx.fillRect(cx, cy, cs, cs);
+      }
+    }
+  }
+
+  const borderSeamInsetPx = BORDER_SEAM_INSET_MM * pxPerMm;
+  const seamX = contentX + borderSeamInsetPx, seamY = contentY + borderSeamInsetPx;
+  const seamW = Math.max(1, contentW - borderSeamInsetPx * 2);
+  const seamH = Math.max(1, contentH - borderSeamInsetPx * 2);
+
+  if (img) {
+    ctx.save();
+    if (borderOn && isStamp) {
+      ctx.beginPath();
+      ctx.rect(seamX, seamY, seamW, seamH);
+      ctx.clip();
+    }
+    const cx = originX + dispW / 2 + offX * dispW, cy = originY + dispH / 2 + offY * dispH;
+    const baseScale = Math.max(dispW / img.naturalWidth, dispH / img.naturalHeight);
+    ctx.translate(cx, cy);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, (-img.naturalWidth * baseScale) / 2, (-img.naturalHeight * baseScale) / 2,
+      img.naturalWidth * baseScale, img.naturalHeight * baseScale);
+    ctx.restore();
+  }
+
+  if (borderOn) {
+    const overlapPx = 1;
+    if (isStamp) {
+      const holeInsetPx = borderSeamInsetPx + overlapPx;
+      ctx.beginPath();
+      tracePath(originX, originY, dispW, dispH, 0, null, true);
+      ctx.rect(contentX + holeInsetPx, contentY + holeInsetPx,
+        Math.max(1, contentW - holeInsetPx * 2), Math.max(1, contentH - holeInsetPx * 2));
+      ctx.fillStyle = borderColor;
+      ctx.fill("evenodd");
+    } else {
+      const ringWidthPx = borderPx + borderSeamInsetPx + overlapPx;
+      ctx.beginPath();
+      tracePath(originX, originY, dispW, dispH, 0, null, true);
+      ctx.lineJoin = "round";
+      ctx.lineWidth = ringWidthPx * 2;
+      ctx.strokeStyle = borderColor;
+      ctx.stroke();
+    }
+  }
+
+  if (lineBorderMode !== "none") {
+    const baseX = borderOn ? contentX : originX, baseY = borderOn ? contentY : originY;
+    const baseW = borderOn ? contentW : dispW, baseH = borderOn ? contentH : dispH;
+    const outerInset = lineBorderInsetMm * pxPerMm, inset2 = lineBorderInset2Mm * pxPerMm;
+    const lines = lineBorderMode === "double"
+      ? [{ inset: outerInset, widthPx: Math.max(0.6, lineBorderWidthMm * pxPerMm), color: lineBorderColor },
+         { inset: inset2, widthPx: Math.max(0.6, lineBorderWidthMm2 * pxPerMm), color: lineBorderColor2 }]
+      : [{ inset: outerInset, widthPx: Math.max(0.6, lineBorderWidthMm * pxPerMm), color: lineBorderColor }];
+    lines.forEach(({ inset, widthPx, color }) => {
+      if (isStamp) {
+        const w = baseW - inset * 2, h = baseH - inset * 2;
+        if (w > 2 && h > 2) {
+          ctx.strokeStyle = color; ctx.lineWidth = widthPx;
+          ctx.strokeRect(baseX + inset, baseY + inset, w, h);
+        }
+      } else {
+        ctx.beginPath();
+        tracePath(baseX, baseY, baseW, baseH, inset, null);
+        ctx.strokeStyle = color; ctx.lineWidth = widthPx; ctx.stroke();
+      }
+    });
+  }
+  ctx.restore();
+
+  if (isStamp) {
+    ctx.save();
+    traceStampPath(ctx, originX, originY, dispW, dispH, r, spacing, margin);
+    ctx.clip();
+    if (borderOn) { ctx.beginPath(); ctx.rect(seamX, seamY, seamW, seamH); ctx.clip(); }
+    ctx.strokeStyle = "rgba(0,0,0,0.16)";
+    ctx.lineWidth = Math.max(1, pxPerMm * 0.09);
+    centers.forEach(([cx, cy]) => { ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke(); });
+    ctx.restore();
+  }
+  return { originX, originY, dispW, dispH };
+}
+
+/* ═══════════════ 여기부터 달력 쪽 ═══════════════ */
+
+// 편집 패널 색은 달력 쪽 색을 그대로 쓴다 — 흰 바탕, 검정 잉크, 회색 괘선
+const T = {
+  pageBg: "#EDEDED", frame: "#FFFFFF", panel: "#FFFFFF", border: "#D8D8D8",
+  text: "#111111", muted: "#6B6B6B", onPanel: "#111111", inputBg: "#FFFFFF",
+  accent: "#111111", accentSoft: "#8A8A8A", sliderTrack: "#E2E2E2",
+  disabled: "#C9C9C9", onAccent: "#FFFFFF", danger: "#C8322A",
+};
+
+const DEFAULT_STAMP = {
+  shape: "stamp", stampW: 25, stampH: 28, offX: 0, offY: 0, scale: 1, rotation: 0,
+  perforation: "medium", borderOn: false, borderColor: "#FFFFFF",
+  lineBorderOn: false, lineBorderMode: "single",
+  lineBorderWidthMm: 0.6, lineBorderWidthMm2: 0.6,
+  lineBorderColor: "#FFFFFF", lineBorderColor2: "#FFFFFF",
+  lineBorderInsetMm: 1.4, lineBorderInset2Mm: 3.0,
+  heartStyle: 1, petalCount: 5, starStyle: 1,
+  calendarBorderColor: "#333333", calendarHeaderColor: "#F4D9A0",
+  calendarSpringColor: "#2E3A46", calendarBorderWidthMm: 1.0, calendarInnerShape: "rect",
+};
+
+// 그리기 함수에 넘길 옵션으로 변환 — 여백/내부 테두리는 우표 모양에서만 적용된다
+function drawOptions(s) {
+  return {
+    ...s,
+    borderOn: s.borderOn && s.shape === "stamp",
+    lineBorderMode: s.lineBorderOn && s.shape === "stamp" ? s.lineBorderMode : "none",
+  };
+}
+
+const MONTH = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
+const DOW = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
+const DOWK = ["일요일","월요일","화요일","수요일","목요일","금요일","토요일"];
+const pad = (n) => (n < 10 ? "0" : "") + n;
+const dkey = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
+
+const imgCache = new Map();
+function loadImage(src) {
+  if (imgCache.has(src)) return imgCache.get(src);
+  const p = new Promise((res, rej) => {
+    const im = new window.Image();
+    im.onload = () => res(im);
+    im.onerror = rej;
+    im.src = src;
+  });
+  imgCache.set(src, p);
+  return p;
+}
+// 원본을 그대로 저장하면 브라우저 저장 공간이 금방 차서, 긴 변 1000px로 줄여 담는다
+function shrink(dataUrl) {
+  return loadImage(dataUrl).then((im) => {
+    const max = 1600;
+    const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+    if (k === 1 && dataUrl.length < 700000) return dataUrl;
+    const c = document.createElement("canvas");
+    c.width = Math.round(im.naturalWidth * k);
+    c.height = Math.round(im.naturalHeight * k);
+    c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+    let out = c.toDataURL("image/webp", 0.88);
+    if (out.indexOf("data:image/webp") !== 0) out = c.toDataURL("image/png");
+    return out;
+  });
+}
+
+/* ── 오른쪽 편집 패널 (우표 메이커 패널 그대로) ── */
+function StampEditorPanel({ date, initial, onApply, onDelete, onClose }) {
+  const base = { ...DEFAULT_STAMP, ...(initial || {}) };
+  const [src, setSrc] = useState(initial && initial.src ? initial.src : null);
+  const [img, setImg] = useState(null);
+  const [stampW, setStampW] = useState(base.stampW);
+  const [stampH, setStampH] = useState(base.stampH);
+  const [offX, setOffX] = useState(base.offX);
+  const [offY, setOffY] = useState(base.offY);
+  const [scale, setScale] = useState(base.scale);
+  const [rotation, setRotation] = useState(base.rotation);
+  const [perforation, setPerforation] = useState(base.perforation);
+  const [borderOn, setBorderOn] = useState(base.borderOn);
+  const [borderColor, setBorderColor] = useState(base.borderColor);
+  const [lineBorderOn, setLineBorderOn] = useState(base.lineBorderOn);
+  const [lineBorderMode, setLineBorderMode] = useState(base.lineBorderMode);
+  const [lineBorderWidthMm, setLineBorderWidthMm] = useState(base.lineBorderWidthMm);
+  const [lineBorderWidthMm2, setLineBorderWidthMm2] = useState(base.lineBorderWidthMm2);
+  const [lineBorderColor, setLineBorderColor] = useState(base.lineBorderColor);
+  const [lineBorderColor2, setLineBorderColor2] = useState(base.lineBorderColor2);
+  const [lineBorderInsetMm, setLineBorderInsetMm] = useState(base.lineBorderInsetMm);
+  const [lineBorderInset2Mm, setLineBorderInset2Mm] = useState(base.lineBorderInset2Mm);
+  const [openColorPicker, setOpenColorPicker] = useState(null);
+  const [pickerHsv, setPickerHsv] = useState({ h: 0, s: 0, v: 1 });
+  const [shape, setShape] = useState(base.shape);
+  const [heartStyle, setHeartStyle] = useState(base.heartStyle);
+  const [petalCount, setPetalCount] = useState(base.petalCount);
+  const [starStyle, setStarStyle] = useState(base.starStyle);
+  const [calendarBorderColor, setCalendarBorderColor] = useState(base.calendarBorderColor);
+  const [calendarHeaderColor, setCalendarHeaderColor] = useState(base.calendarHeaderColor);
+  const [calendarSpringColor, setCalendarSpringColor] = useState(base.calendarSpringColor);
+  const [calendarBorderWidthMm, setCalendarBorderWidthMm] = useState(base.calendarBorderWidthMm);
+  const [calendarInnerShape, setCalendarInnerShape] = useState(base.calendarInnerShape);
+  const [msg, setMsg] = useState("");
+
+  const effectiveLineBorderMode = lineBorderOn && shape === "stamp" ? lineBorderMode : "none";
+  const effectiveBorderOn = borderOn && shape === "stamp";
+
+  const canvasRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const dragState = useRef(null);
+  const STAGE = 300;
+
+  useEffect(() => {
+    if (!src) { setImg(null); return; }
+    let alive = true;
+    loadImage(src).then((im) => { if (alive) setImg(im); }).catch(() => setMsg("이미지를 읽지 못했습니다."));
+    return () => { alive = false; };
+  }, [src]);
+
+  const redraw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.width = STAGE; canvas.height = STAGE;
+    drawStamp(canvas.getContext("2d"), {
+      canvasW: STAGE, canvasH: STAGE, stampW, stampH, img, offX, offY, scale, rotation,
+      checker: true, shape, heartStyle, petalCount, starStyle,
+      calendarBorderColor, calendarHeaderColor, calendarSpringColor,
+      calendarBorderWidthMm, calendarInnerShape, perforation,
+      borderOn: effectiveBorderOn, borderColor,
+      lineBorderMode: effectiveLineBorderMode, lineBorderWidthMm, lineBorderWidthMm2,
+      lineBorderColor, lineBorderColor2, lineBorderInsetMm, lineBorderInset2Mm,
+    });
+  }, [stampW, stampH, img, offX, offY, scale, rotation, shape, heartStyle, petalCount, starStyle,
+      calendarBorderColor, calendarHeaderColor, calendarSpringColor, calendarBorderWidthMm, calendarInnerShape,
+      perforation, effectiveBorderOn, borderColor, effectiveLineBorderMode, lineBorderWidthMm,
+      lineBorderWidthMm2, lineBorderColor, lineBorderColor2, lineBorderInsetMm, lineBorderInset2Mm]);
+
+  useEffect(() => { redraw(); }, [redraw]);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    const onPaste = (e) => {
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image/") === 0) { takeFile(items[i].getAsFile()); e.preventDefault(); return; }
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("paste", onPaste);
+    return () => { document.removeEventListener("keydown", onKey); document.removeEventListener("paste", onPaste); };
+  });
+
+  const takeFile = (file) => {
+    if (!file || !/^image\//.test(file.type)) { setMsg("이미지 파일만 넣을 수 있습니다."); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setMsg("");
+      shrink(reader.result).then((s) => {
+        setSrc(s); setOffX(0); setOffY(0); setScale(1); setRotation(0);
+      });
+    };
+    reader.onerror = () => setMsg("파일을 읽지 못했습니다.");
+    reader.readAsDataURL(file);
+  };
+
+  const onPointerDown = (e) => {
+    if (!img) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    dragState.current = { startX: e.clientX, startY: e.clientY, offX, offY, rectW: rect.width, rectH: rect.height };
+    canvasRef.current.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e) => {
+    if (!dragState.current) return;
+    const { startX, startY, offX: bx, offY: by, rectW, rectH } = dragState.current;
+    setOffX(bx + (e.clientX - startX) / rectW);
+    setOffY(by + (e.clientY - startY) / rectH);
+  };
+  const onPointerUp = () => { dragState.current = null; };
+
+  const resetTransform = () => { setOffX(0); setOffY(0); setScale(1); setRotation(0); };
+  const resetSize = () => {
+    const d = DEFAULT_SIZE[shape] || DEFAULT_SIZE.stamp;
+    setStampW(d.w); setStampH(d.h);
+  };
+  const changeShape = (next) => {
+    setShape(next);
+    const d = DEFAULT_SIZE[next] || DEFAULT_SIZE.stamp;
+    setStampW(d.w); setStampH(d.h);
+  };
+
+  const toggleColorPicker = (key, currentHex) => {
+    setOpenColorPicker((prev) => {
+      const next = prev === key ? null : key;
+      if (next) setPickerHsv(hexToHsv(currentHex));
+      return next;
+    });
+  };
+  const handleSvPointer = (e, onChange) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const s = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    const v = 1 - Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
+    setPickerHsv((prev) => { onChange(hsvToHex(prev.h, s, v)); return { h: prev.h, s, v }; });
+  };
+  const handleHueChange = (h, onChange) => {
+    setPickerHsv((prev) => { onChange(hsvToHex(h, prev.s, prev.v)); return { h, s: prev.s, v: prev.v }; });
+  };
+
+  const apply = () => {
+    if (!date) { setMsg("먼저 달력에서 붙일 칸을 선택하세요."); return; }
+    if (!src) { setMsg("먼저 이미지를 넣어주세요."); return; }
+    Promise.resolve(onApply({
+      src, shape, stampW, stampH, offX, offY, scale, rotation, perforation,
+      borderOn, borderColor, lineBorderOn, lineBorderMode,
+      lineBorderWidthMm, lineBorderWidthMm2, lineBorderColor, lineBorderColor2,
+      lineBorderInsetMm, lineBorderInset2Mm, heartStyle, petalCount, starStyle,
+      calendarBorderColor, calendarHeaderColor, calendarSpringColor,
+      calendarBorderWidthMm, calendarInnerShape,
+    })).then((ok) => {
+      setMsg(ok ? "" : "저장하지 못했습니다. 저장 공간을 확인해 주세요.");
+    });
+  };
+
+  const renderColorPicker = (key, value, onChange) => {
+    if (openColorPicker !== key) return null;
+    return (
+      <div style={{ marginTop: 8, padding: 10, borderRadius: 8, background: T.inputBg, border: `1px solid ${T.border}` }}>
+        <div
+          onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); handleSvPointer(e, onChange); }}
+          onPointerMove={(e) => e.buttons === 1 && handleSvPointer(e, onChange)}
+          style={{
+            position: "relative", width: "100%", height: 120, borderRadius: 6, marginBottom: 10, cursor: "crosshair",
+            background: `linear-gradient(to top, #000, rgba(0,0,0,0)), linear-gradient(to right, #fff, rgba(255,255,255,0)), hsl(${pickerHsv.h}, 100%, 50%)`,
+          }}>
+          <div style={{
+            position: "absolute", left: `calc(${pickerHsv.s * 100}% - 7px)`, top: `calc(${(1 - pickerHsv.v) * 100}% - 7px)`,
+            width: 14, height: 14, borderRadius: "50%", border: "2px solid #fff",
+            boxShadow: "0 0 0 1px rgba(0,0,0,0.4)", pointerEvents: "none" }} />
+        </div>
+        <input type="range" className="hue-slider" min={0} max={359} value={Math.round(pickerHsv.h)}
+          onChange={(e) => handleHueChange(Number(e.target.value), onChange)}
+          style={{ marginBottom: 10, display: "block" }} />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+          {COLOR_PALETTE.map((c) => (
+            <button key={c} type="button" onClick={() => { onChange(c); setPickerHsv(hexToHsv(c)); }}
+              style={{ width: 22, height: 22, borderRadius: 5,
+                border: value.toLowerCase() === c.toLowerCase() ? `2px solid ${T.accent}` : "none",
+                background: c, cursor: "pointer", padding: 0 }} />
+          ))}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 22, height: 22, borderRadius: 5, background: value, flexShrink: 0 }} />
+          <input type="text" value={value} spellCheck={false}
+            onChange={(e) => { const v = e.target.value; onChange(v); if (/^#[0-9a-fA-F]{6}$/.test(v)) setPickerHsv(hexToHsv(v)); }}
+            style={{ flex: 1, padding: "6px 8px", borderRadius: 6, border: `1px solid ${T.border}`,
+              background: "#fff", color: T.text, fontSize: 12 }} />
+          <button type="button" onClick={() => setOpenColorPicker(null)}
+            style={{ padding: "6px 10px", fontSize: 12, color: T.onAccent, background: T.accent,
+              border: "none", borderRadius: 6, cursor: "pointer", whiteSpace: "nowrap" }}>닫기</button>
+        </div>
+      </div>
+    );
+  };
+
+  const p = date ? date.split("-") : null;
+  const dowLabel = p ? DOWK[new Date(+p[0], +p[1] - 1, +p[2]).getDay()] : "";
+
+  return (
+    <aside className="editorpane" aria-label="우표 편집"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => { e.preventDefault(); takeFile(e.dataTransfer.files[0]); }}>
+      <div className="pane-inner">
+        <div style={{ padding: "34px 22px 14px", textAlign: "center", position: "relative" }}>
+          <button onClick={onClose} aria-label="닫기"
+            style={{ position: "absolute", top: 12, right: 14, background: "none", border: 0,
+              fontSize: 17, color: T.muted, cursor: "pointer", lineHeight: 1, padding: 4 }}>✕</button>
+          {/* 어느 칸을 편집 중인지 — 패널에서 가장 먼저 눈에 들어와야 하는 정보 */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <span style={{ fontFamily: "Pretendard Variable, Pretendard, Gothic A1, -apple-system, Segoe UI, Malgun Gothic, sans-serif",
+              fontSize: 22, letterSpacing: "0.04em", lineHeight: 1,
+              color: p ? T.onPanel : T.disabled }}>
+              {p ? `${p[0]}.${p[1]}.${p[2]}` : "날짜 미선택"}
+            </span>
+            <span style={{ fontSize: 12, color: T.muted, letterSpacing: "0.02em" }}>
+              {p ? dowLabel : "달력에서 칸을 고르세요"}
+            </span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 20, flexWrap: "wrap" }}>
+            {[{ key: "stamp", label: "우표" }, { key: "heart", label: "하트" }, { key: "flower", label: "꽃" },
+              { key: "star", label: "별" }, { key: "calendar", label: "달력" }].map((opt) => {
+              const active = shape === opt.key;
+              return (
+                <button key={opt.key} onClick={() => changeShape(opt.key)}
+                  style={{ padding: "5px 12px", fontSize: 11, fontWeight: active ? 700 : 500,
+                    color: active ? T.onAccent : T.muted, background: active ? T.accent : "transparent",
+                    border: `1px solid ${active ? T.accent : T.border}`, borderRadius: 999, cursor: "pointer" }}>
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ padding: "10px 22px 6px", display: "flex", justifyContent: "center" }}>
+          <div style={{ position: "relative", width: "100%", maxWidth: STAGE, aspectRatio: "1 / 1" }}>
+            <canvas ref={canvasRef} width={STAGE} height={STAGE}
+              onPointerDown={onPointerDown} onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp} onPointerLeave={onPointerUp}
+              style={{ width: "100%", height: "100%", touchAction: "none", cursor: img ? "grab" : "default",
+                display: "block", filter: "drop-shadow(0 10px 18px rgba(59,42,32,0.3))" }} />
+            {!img && (
+              <div style={{ position: "absolute",
+                ...(shape === "calendar"
+                  ? (() => {
+                      const l = calendarLayout(STAGE, STAGE, stampW, stampH, calendarInnerShape);
+                      const pc = (v) => (v / STAGE) * 100 + "%";
+                      return { left: pc(l.imgX), top: pc(l.imgY), width: pc(l.imgW), height: pc(l.imgH) };
+                    })()
+                  : { inset: 0 }),
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: 8, color: T.muted, pointerEvents: "none" }}>
+                <ImagePlaceholderIcon size={26} />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ padding: "8px 22px 4px" }}>
+          <input ref={fileInputRef} type="file" accept="image/*"
+            onChange={(e) => { takeFile(e.target.files && e.target.files[0]); e.target.value = ""; }}
+            style={{ display: "none" }} />
+          <button onClick={() => fileInputRef.current && fileInputRef.current.click()}
+            style={{ width: "100%", padding: "11px 0", background: T.accent, color: T.onAccent, border: "none",
+              borderRadius: 8, fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center",
+              justifyContent: "center", gap: 8, cursor: "pointer" }}>
+            <Upload size={16} /> 이미지 선택
+          </button>
+          <div style={{ textAlign: "center", fontSize: 11, color: T.muted, marginTop: 16 }}>
+            드래그로 위치 조절 · 창에 끌어다 놓거나 Ctrl+V 로도 넣을 수 있어요
+          </div>
+          {msg && <div style={{ textAlign: "center", fontSize: 11, color: T.accent, marginTop: 6 }}>{msg}</div>}
+        </div>
+
+        <div className="pane-body" style={{ padding: "18px 22px 0" }}>
+          <div style={{ paddingTop: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: T.muted, whiteSpace: "nowrap" }}>사이즈</span>
+              <input type="number" value={stampW} min={5} max={30}
+                onChange={(e) => setStampW(Math.min(30, Number(e.target.value) || 1))}
+                style={{ width: 46, padding: "7px 6px", borderRadius: 6, border: `1px solid ${T.border}`,
+                  background: "#FFFFFF", color: T.text, fontSize: 13, textAlign: "center" }} />
+              <span style={{ fontSize: 12, color: T.muted }}>X</span>
+              <input type="number" value={stampH} min={5} max={30}
+                onChange={(e) => setStampH(Math.min(30, Number(e.target.value) || 1))}
+                style={{ width: 46, padding: "7px 6px", borderRadius: 6, border: `1px solid ${T.border}`,
+                  background: "#FFFFFF", color: T.text, fontSize: 13, textAlign: "center" }} />
+              <span style={{ fontSize: 11, color: T.muted, whiteSpace: "nowrap" }}>mm(최대 30mm)</span>
+              <button onClick={resetSize}
+                style={{ marginLeft: "auto", padding: "7px 10px", fontSize: 12, color: T.accentSoft,
+                  background: "transparent", border: `1px solid ${T.accentSoft}`, borderRadius: 6,
+                  cursor: "pointer", whiteSpace: "nowrap" }}>기본값</button>
+            </div>
+          </div>
+
+          <div style={{ paddingTop: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: SLIDER_ROW_GAP, marginBottom: 10 }}>
+              <span style={{ fontSize: 12, color: T.muted, width: SLIDER_LABEL_WIDTH, flexShrink: 0 }}>확대/축소</span>
+              <input type="range" className="ui-slider" min={0.5} max={3} step={0.05} value={scale}
+                onChange={(e) => setScale(Number(e.target.value))}
+                style={{ flex: 1, minWidth: 0, "--track-color": T.sliderTrack, "--thumb-color": T.accent,
+                  "--fill-percent": `${((scale - 0.5) / 2.5) * 100}%` }} />
+              <span style={{ fontSize: 12, color: T.muted, width: 42, textAlign: "right" }}>{scale.toFixed(2)}x</span>
+              <span style={{ width: SLIDER_SLOT_WIDTH, display: "flex", justifyContent: "flex-end" }}>
+                <button type="button" onClick={() => setScale(1)}
+                  style={{ padding: "5px 10px", fontSize: 11, color: T.accentSoft, background: "transparent",
+                    border: `1px solid ${T.accentSoft}`, borderRadius: 6, cursor: "pointer" }}>1.00x</button>
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: SLIDER_ROW_GAP }}>
+              <span style={{ fontSize: 12, color: T.muted, width: SLIDER_LABEL_WIDTH, flexShrink: 0 }}>회전</span>
+              <input type="range" className="ui-slider" min={-180} max={180} step={1} value={rotation}
+                onChange={(e) => setRotation(Number(e.target.value))}
+                style={{ flex: 1, minWidth: 0, "--track-color": T.sliderTrack, "--thumb-color": T.accent,
+                  "--fill-percent": `${((rotation + 180) / 360) * 100}%` }} />
+              <span style={{ fontSize: 12, color: T.muted, width: 42, textAlign: "right" }}>{rotation}°</span>
+              <span style={{ width: SLIDER_SLOT_WIDTH, display: "flex", justifyContent: "flex-end" }}>
+                <button type="button" onClick={() => setRotation(0)}
+                  style={{ padding: "5px 10px", fontSize: 11, color: T.accentSoft, background: "transparent",
+                    border: `1px solid ${T.accentSoft}`, borderRadius: 6, cursor: "pointer" }}>0°</button>
+              </span>
+            </div>
+          </div>
+
+          {shape === "stamp" && (
+            <div style={{ paddingTop: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: T.muted, whiteSpace: "nowrap" }}>테두리 간격</span>
+                <div style={{ display: "flex", gap: 6, flex: 1 }}>
+                  {Object.entries(PERFORATION_LEVELS).map(([key, level]) => {
+                    const active = perforation === key;
+                    return (
+                      <button key={key} onClick={() => setPerforation(key)}
+                        style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: active ? 700 : 500,
+                          color: active ? T.onAccent : T.muted, background: active ? T.accent : "transparent",
+                          border: `1px solid ${active ? T.accent : T.border}`, borderRadius: 7, cursor: "pointer" }}>
+                        {level.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {shape === "stamp" && (
+            <div style={{ paddingTop: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 700,
+                  color: T.muted, cursor: "pointer", whiteSpace: "nowrap" }}>
+                  <input type="checkbox" checked={borderOn} onChange={(e) => setBorderOn(e.target.checked)}
+                    style={{ width: 16, height: 16, accentColor: T.accent, cursor: "pointer" }} />
+                  여백
+                </label>
+                <div title={borderOn ? "색상 변경" : "여백을 켜야 색상을 바꿀 수 있음"}
+                  onClick={() => borderOn && toggleColorPicker("border", borderColor)}
+                  style={{ width: 44, height: 26, borderRadius: 4, background: "#fff",
+                    border: `1px solid ${T.border}`, position: "relative", overflow: "hidden",
+                    cursor: borderOn ? "pointer" : "default" }}>
+                  {borderOn ? <div style={{ position: "absolute", inset: 0, background: borderColor }} /> : (
+                    <>
+                      <div style={{ position: "absolute", top: "50%", left: "50%", width: 16, height: 2.5,
+                        background: T.danger, borderRadius: 2, transform: "translate(-50%,-50%) rotate(45deg)" }} />
+                      <div style={{ position: "absolute", top: "50%", left: "50%", width: 16, height: 2.5,
+                        background: T.danger, borderRadius: 2, transform: "translate(-50%,-50%) rotate(-45deg)" }} />
+                    </>
+                  )}
+                </div>
+              </div>
+              {renderColorPicker("border", borderColor, setBorderColor)}
+            </div>
+          )}
+
+          {shape === "heart" && (
+            <div style={{ paddingTop: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: T.muted }}>모양</span>
+                <div style={{ display: "flex", gap: 6, flex: 1 }}>
+                  {HEART_VARIANTS.map((pts, idx) => {
+                    const active = heartStyle === idx + 1;
+                    return (
+                      <button key={idx} onClick={() => setHeartStyle(idx + 1)}
+                        style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                          padding: "6px 0", background: active ? T.accent : "transparent",
+                          border: `1px solid ${active ? T.accent : T.border}`, borderRadius: 7,
+                          cursor: "pointer", color: active ? T.onAccent : T.muted }}>
+                        <svg width="26" height="26" viewBox="0 0 26 26"><path d={curvePointsToIconPath(pts)} fill="currentColor" /></svg>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {shape === "flower" && (
+            <div style={{ paddingTop: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: T.muted }}>잎 개수</span>
+                <div style={{ display: "flex", gap: 6, flex: 1 }}>
+                  {[4, 5, 6].map((n) => {
+                    const active = petalCount === n;
+                    return (
+                      <button key={n} onClick={() => setPetalCount(n)}
+                        style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                          padding: "6px 0", background: active ? T.accent : "transparent",
+                          border: `1px solid ${active ? T.accent : T.border}`, borderRadius: 7,
+                          cursor: "pointer", color: active ? T.onAccent : T.muted }}>
+                        <svg width="26" height="26" viewBox="0 0 26 26">
+                          <path d={curvePointsToIconPath(FLOWER_VARIANTS_BY_PETALS[n])} fill="currentColor" />
+                        </svg>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {shape === "star" && (
+            <div style={{ paddingTop: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: T.muted }}>모양</span>
+                <div style={{ display: "flex", gap: 6, flex: 1 }}>
+                  {STAR_VARIANTS.map((pts, idx) => {
+                    const active = starStyle === idx + 1;
+                    return (
+                      <button key={idx} onClick={() => setStarStyle(idx + 1)}
+                        style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                          padding: "6px 0", background: active ? T.accent : "transparent",
+                          border: `1px solid ${active ? T.accent : T.border}`, borderRadius: 7,
+                          cursor: "pointer", color: active ? T.onAccent : T.muted }}>
+                        <svg width="26" height="26" viewBox="0 0 26 26"><path d={curvePointsToIconPath(pts)} fill="currentColor" /></svg>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {shape === "calendar" && (
+            <div style={{ paddingTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+              <div>
+                <SliderRow label="테두리" value={calendarBorderWidthMm} min={0.3} max={3} step={0.1} unit="mm"
+                  onChange={setCalendarBorderWidthMm} T={T}
+                  swatch={<SwatchBox color={calendarBorderColor} T={T} active={openColorPicker === "calBorder"}
+                    onClick={() => toggleColorPicker("calBorder", calendarBorderColor)} />} />
+                {renderColorPicker("calBorder", calendarBorderColor, setCalendarBorderColor)}
+              </div>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: T.muted }}>위쪽 바탕색</span>
+                    <SwatchBox color={calendarHeaderColor} T={T} active={openColorPicker === "calHeader"}
+                      onClick={() => toggleColorPicker("calHeader", calendarHeaderColor)} />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: T.muted }}>스프링 색</span>
+                    <SwatchBox color={calendarSpringColor} T={T} active={openColorPicker === "calSpring"}
+                      onClick={() => toggleColorPicker("calSpring", calendarSpringColor)} />
+                  </div>
+                </div>
+                {renderColorPicker("calHeader", calendarHeaderColor, setCalendarHeaderColor)}
+                {renderColorPicker("calSpring", calendarSpringColor, setCalendarSpringColor)}
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: T.muted, marginBottom: 8 }}>이미지 영역 모양</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {[{ key: "rect", label: "사각형" }, { key: "stamp", label: "우표" }, { key: "heart", label: "하트" }].map((opt) => {
+                    const active = calendarInnerShape === opt.key;
+                    return (
+                      <button key={opt.key} onClick={() => setCalendarInnerShape(opt.key)}
+                        style={{ flex: 1, padding: "6px 0", fontSize: 11, fontWeight: active ? 700 : 500,
+                          color: active ? T.onAccent : T.muted, background: active ? T.accent : "transparent",
+                          border: `1px solid ${active ? T.accent : T.border}`, borderRadius: 7, cursor: "pointer" }}>
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {shape === "stamp" && (
+            <div style={{ paddingTop: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 34 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 700,
+                  color: T.muted, cursor: "pointer", whiteSpace: "nowrap" }}>
+                  <input type="checkbox" checked={lineBorderOn} onChange={(e) => setLineBorderOn(e.target.checked)}
+                    style={{ width: 16, height: 16, accentColor: T.accent, cursor: "pointer" }} />
+                  내부 테두리
+                </label>
+                <div style={{ display: "flex", gap: 6, flex: 1, opacity: lineBorderOn ? 1 : 0,
+                  pointerEvents: lineBorderOn ? "auto" : "none", transition: "opacity 0.15s" }}>
+                  {[{ key: "single", label: "테두리 1" }, { key: "double", label: "테두리 2" }].map((opt) => {
+                    const active = lineBorderMode === opt.key;
+                    return (
+                      <button key={opt.key} onClick={() => setLineBorderMode(opt.key)}
+                        style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: active ? 700 : 500,
+                          color: active ? T.onAccent : T.muted, background: active ? T.accent : "transparent",
+                          border: `1px solid ${active ? T.accent : T.border}`, borderRadius: 7, cursor: "pointer" }}>
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div style={{ paddingTop: 10, opacity: lineBorderOn ? 1 : 0,
+                pointerEvents: lineBorderOn ? "auto" : "none", transition: "opacity 0.15s" }}>
+                <SliderRow label={lineBorderMode === "double" ? "테두리 1 두께" : "선 두께"}
+                  value={lineBorderWidthMm} min={0.2} max={2} step={0.1} unit="mm"
+                  onChange={setLineBorderWidthMm} T={T}
+                  swatch={<SwatchBox color={lineBorderColor} T={T} active={openColorPicker === "line1"}
+                    onClick={() => toggleColorPicker("line1", lineBorderColor)} />} />
+                {renderColorPicker("line1", lineBorderColor, setLineBorderColor)}
+                {lineBorderMode === "double" && (
+                  <>
+                    <SliderRow label="테두리 2 두께" value={lineBorderWidthMm2} min={0.2} max={2} step={0.1} unit="mm"
+                      onChange={setLineBorderWidthMm2} T={T}
+                      swatch={<SwatchBox color={lineBorderColor2} T={T} active={openColorPicker === "line2"}
+                        onClick={() => toggleColorPicker("line2", lineBorderColor2)} />} />
+                    {renderColorPicker("line2", lineBorderColor2, setLineBorderColor2)}
+                  </>
+                )}
+                <SliderRow label={lineBorderMode === "double" ? "테두리 1 간격" : "간격"}
+                  value={lineBorderInsetMm} min={0.3} max={4} step={0.1} unit="mm"
+                  onChange={setLineBorderInsetMm} T={T} />
+                {lineBorderMode === "double" && (
+                  <SliderRow label="테두리 2 간격" value={lineBorderInset2Mm} min={0.3} max={4} step={0.1} unit="mm"
+                    onChange={setLineBorderInset2Mm} T={T} />
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="pane-actions" style={{ display: "flex", gap: 8, paddingTop: 20, paddingBottom: 22 }}>
+            <button onClick={resetTransform}
+              style={{ flex: 1, padding: "12px 0", background: "transparent", color: T.accentSoft,
+                border: `1px solid ${T.accentSoft}`, borderRadius: 8, fontSize: 13, display: "flex",
+                alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer" }}>
+              <RotateCcw size={14} /> 초기화
+            </button>
+            <button onClick={onDelete} disabled={!date}
+              style={{ flex: 1, padding: "12px 0", background: "transparent",
+                color: date ? T.danger : T.disabled,
+                border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
+              비우기
+            </button>
+            <button onClick={apply} disabled={!src || !date}
+              title={date ? "" : "달력에서 칸을 먼저 선택하세요"}
+              style={{ flex: 1.4, padding: "12px 0", background: (src && date) ? T.accent : T.disabled, color: T.onAccent,
+                border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, display: "flex",
+                alignItems: "center", justifyContent: "center", gap: 6,
+                cursor: (src && date) ? "pointer" : "not-allowed" }}>
+              <Check size={14} /> 붙이기
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+/* ═══════════ 저장소 ═══════════
+   1) IndexedDB — localStorage(5MB)로는 이미지가 금방 넘쳐서 옮겼다. 기존 localStorage 데이터는 처음 한 번 자동 이관.
+   2) 백업/복원 — 전 기간 데이터를 .json 파일 하나로 주고받는다. 브라우저 저장소를 지워도 이 파일만 있으면 복구된다.
+   ══════════════════════════════ */
+const DB_NAME = "stampcal", STORE = "months", META = "meta";
+
+function openDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      if (!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE);
+      if (!d.objectStoreNames.contains(META)) d.createObjectStore(META);
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function tx(store, mode, fn) {
+  return openDB().then((db) => new Promise((res, rej) => {
+    const t = db.transaction(store, mode);
+    const req = fn(t.objectStore(store));
+    t.oncomplete = () => res(req && req.result);
+    t.onerror = () => rej(t.error);
+    t.onabort = () => rej(t.error);
+  }));
+}
+const idbGet = (store, key) => tx(store, "readonly", (o) => o.get(key));
+const idbSet = (store, key, val) => tx(store, "readwrite", (o) => o.put(val, key));
+const idbDel = (store, key) => tx(store, "readwrite", (o) => o.delete(key));
+const idbAll = () => openDB().then((db) => new Promise((res, rej) => {
+  const t = db.transaction(STORE, "readonly");
+  const o = t.objectStore(STORE);
+  const out = {};
+  const cur = o.openCursor();
+  cur.onsuccess = () => {
+    const c = cur.result;
+    if (!c) { res(out); return; }
+    out[c.key] = c.value;
+    c.continue();
+  };
+  cur.onerror = () => rej(cur.error);
+}));
+
+// 예전 localStorage 데이터를 한 번만 옮겨온다
+async function migrateFromLocalStorage() {
+  if (await idbGet(META, "migrated")) return;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || key.indexOf("stampcal:") !== 0) continue;
+      const monthKey = key.slice("stampcal:".length);
+      const val = JSON.parse(localStorage.getItem(key) || "null");
+      if (val) await idbSet(STORE, monthKey, val);
+    }
+  } catch (e) {}
+  await idbSet(META, "migrated", true);
+}
+
+// 브라우저가 저장소를 임의로 비우지 않도록 요청 (거절돼도 동작에는 지장 없음)
+function requestPersistence() {
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(() => {});
+  }
+}
+
+// 아티팩트 안에서는 downloads 기능으로, 일반 웹(배포본)에서는 링크로 저장한다
+async function saveFile(filename, blob) {
+  if (window.claude && window.claude.use) {
+    const d = await window.claude.use("downloads").catch(() => null);
+    if (d) { await d.save({ filename, data: blob }); return; }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// onlyKey 를 주면 그 달만, 없으면 우표가 들어 있는 모든 달을 담는다
+async function buildBackup(onlyKey) {
+  const all = await idbAll();
+  let months;
+  if (onlyKey) months = { [onlyKey]: all[onlyKey] || {} };
+  else {
+    months = {};
+    Object.keys(all).forEach((k) => {
+      const v = all[k];
+      if (v && v.stamps && Object.keys(v.stamps).length) months[k] = v;   // 빈 달은 뺀다
+    });
+  }
+  return new Blob([JSON.stringify({
+    app: "stamp-diary", version: 1, exportedAt: new Date().toISOString(), months,
+  })], { type: "application/json" });
+}
+// 복원한 달 키 목록을 돌려준다 — 화면을 그 달로 옮기는 데 쓴다
+async function restoreBackup(text) {
+  const parsed = JSON.parse(text);
+  const months = parsed && parsed.months;
+  if (!months || typeof months !== "object") throw new Error("형식이 다릅니다");
+  const keys = Object.keys(months).sort();
+  for (const k of keys) await idbSet(STORE, k, months[k]);
+  return keys;
+}
+
+/* ── 달력을 PNG로 다시 그려서 내보낸다 (화면 캡처가 아니라 캔버스에 새로 그린다) ── */
+const NUM_FONT = '"Pretendard Variable", Pretendard, "Gothic A1", -apple-system, sans-serif';
+const EXPORT_WIDTH = 3200;   // 내보내는 PNG의 가로 픽셀 — 이 값만 바꾸면 전체가 따라 커진다
+const EXPORT_DPI = 300;      // 파일에 적어둘 인쇄 밀도(pHYs) — 화질이 아니라 "종이에 찍힐 크기" 표시
+
+/* PNG에 pHYs 청크를 넣어 300dpi로 표시한다. 이걸 안 적으면 뷰어·인쇄 프로그램이 96dpi로 가정한다.
+   픽셀 데이터는 그대로이고 물리 크기 표기만 바뀐다. */
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+async function pngWithDpi(blob, dpi) {
+  try {
+    const src = new Uint8Array(await blob.arrayBuffer());
+    if (src[0] !== 0x89 || src[1] !== 0x50) return blob;          // PNG가 아니면 그대로
+    const ppm = Math.round(dpi / 0.0254);
+    const chunk = new Uint8Array(21);                              // 길이(4)+타입(4)+데이터(9)+CRC(4)
+    const dv = new DataView(chunk.buffer);
+    dv.setUint32(0, 9);
+    chunk.set([0x70, 0x48, 0x59, 0x73], 4);                        // "pHYs"
+    dv.setUint32(8, ppm); dv.setUint32(12, ppm);
+    chunk[16] = 1;                                                 // 단위: 미터
+    dv.setUint32(17, crc32(chunk.subarray(4, 17)));
+    const insertAt = 8 + 25;                                       // 시그니처 + IHDR 뒤
+    const out = new Uint8Array(src.length + chunk.length);
+    out.set(src.subarray(0, insertAt), 0);
+    out.set(chunk, insertAt);
+    out.set(src.subarray(insertAt), insertAt + chunk.length);
+    return new Blob([out], { type: "image/png" });
+  } catch (e) { return blob; }
+}
+
+async function renderCalendarPNG(y, m, days, data) {
+  if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
+
+  // 화면·SNS 공유용 크기 — 150dpi로 인쇄해도 A4보다 크게 나온다(약 271mm 폭)
+  const W = EXPORT_WIDTH, margin = Math.round(W * 0.027);
+  const cellW = (W - margin * 2) / 7;
+  const cellH = cellW * 1.3;
+  const k = cellW / 140;                 // 화면 한 칸(약 140px) 대비 배율
+  const rows = days.length / 7;
+  const headH = 96 * k, dowH = 40 * k;
+  const H = Math.round(margin * 2 + headH + dowH + cellH * rows);
+
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext("2d");
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, W, H);
+
+  // 머리글 — SEPTEMBER 09 ... 2026
+  const titleSize = 30 * k;
+  const baseY = margin + titleSize;
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#111111";
+  ctx.font = `500 ${titleSize}px ${NUM_FONT}`;
+  ctx.textAlign = "left";
+  const monthText = MONTH[m];
+  ctx.fillText(monthText, margin, baseY);
+  const mw = ctx.measureText(monthText).width;
+  ctx.fillStyle = "#6B6B6B";
+  ctx.fillText(pad(m + 1), margin + mw + 14 * k, baseY);
+  ctx.fillStyle = "#A8A8A8";
+  ctx.font = `400 ${14 * k}px ${NUM_FONT}`;
+  ctx.textAlign = "right";
+  ctx.fillText(String(y), W - margin, baseY);
+
+  const gridTop = margin + headH;
+  const gridBottom = gridTop + dowH + cellH * rows;
+
+  // 요일 머리글
+  ctx.textAlign = "center";
+  ctx.font = `400 ${11.5 * k}px ${NUM_FONT}`;
+  DOW.forEach((n, i) => {
+    ctx.fillStyle = i === 0 ? "#C8322A" : i === 6 ? "#2F5AA8" : "#6B6B6B";
+    const spaced = n.split("").join(" ");
+    ctx.fillText(spaced, margin + cellW * (i + 0.5), gridTop + dowH * 0.68);
+  });
+
+  // 격자 — 위쪽 한 줄만 진하게, 나머지는 옅은 회색
+  ctx.lineWidth = Math.max(1, 1 * k);
+  ctx.strokeStyle = "#E2E2E2";
+  for (let c = 0; c <= 7; c++) {
+    const x = Math.round(margin + cellW * c) + 0.5;
+    ctx.beginPath(); ctx.moveTo(x, gridTop); ctx.lineTo(x, gridBottom); ctx.stroke();
+  }
+  for (let r = 0; r <= rows; r++) {
+    const yy = Math.round(gridTop + dowH + cellH * r) + 0.5;
+    ctx.beginPath(); ctx.moveTo(margin, yy); ctx.lineTo(W - margin, yy); ctx.stroke();
+  }
+  ctx.strokeStyle = "#111111";
+  ctx.lineWidth = Math.max(1.5, 1.5 * k);
+  ctx.beginPath();
+  ctx.moveTo(margin, Math.round(gridTop) + 0.5);
+  ctx.lineTo(W - margin, Math.round(gridTop) + 0.5);
+  ctx.stroke();
+
+  // 칸 내용
+  const inPad = 6 * k;
+  for (let i = 0; i < days.length; i++) {
+    const { dt, outside } = days[i];
+    const col = i % 7, row = Math.floor(i / 7);
+    const x = margin + cellW * col, yTop = gridTop + dowH + cellH * row;
+    const ks = dkey(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    const dow = dt.getDay();
+
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.font = `400 ${13 * k}px ${NUM_FONT}`;
+    ctx.fillStyle = outside ? "#A8A8A8" : dow === 0 ? "#C8322A" : dow === 6 ? "#2F5AA8" : "#111111";
+    ctx.fillText(String(dt.getDate()), x + inPad, yTop + inPad);
+    const headBottom = yTop + inPad + 14 * k;
+
+    const stamp = data.stamps && data.stamps[ks];
+    if (!stamp) continue;
+    let im = null;
+    try { im = await loadImage(stamp.src); } catch (e) { continue; }
+    const areaX = x + inPad, areaY = headBottom + 2 * k;
+    const areaW = cellW - inPad * 2, areaH = yTop + cellH - inPad - areaY;
+    if (areaW < 4 || areaH < 4) continue;
+    const sub = document.createElement("canvas");
+    sub.width = Math.round(areaW); sub.height = Math.round(areaH);
+    drawStamp(sub.getContext("2d"), {
+      ...drawOptions({ ...DEFAULT_STAMP, ...stamp }),
+      canvasW: sub.width, canvasH: sub.height, img: im, checker: false,
+    });
+    ctx.drawImage(sub, areaX, areaY);
+  }
+
+  const blob = await new Promise((res) => cv.toBlob(res, "image/png"));
+  return pngWithDpi(blob, EXPORT_DPI);
+}
+
+/* ── 달력 칸의 우표 — 저장된 원본 + 설정으로 그때그때 다시 그린다 ── */
+function CellStamp({ stamp }) {
+  const ref = useRef(null);
+  const [img, setImg] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    loadImage(stamp.src).then((im) => { if (alive) setImg(im); }).catch(() => {});
+    return () => { alive = false; };
+  }, [stamp.src]);
+
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const paint = () => {
+      const box = canvas.getBoundingClientRect();
+      if (!box.width || !box.height) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(box.width * dpr);
+      canvas.height = Math.round(box.height * dpr);
+      drawStamp(canvas.getContext("2d"), {
+        ...drawOptions({ ...DEFAULT_STAMP, ...stamp }),
+        canvasW: canvas.width, canvasH: canvas.height, img, checker: false,
+      });
+    };
+    paint();
+    const ro = new ResizeObserver(paint);
+    ro.observe(canvas);
+    return () => ro.disconnect();
+  }, [stamp, img]);
+
+  return <canvas ref={ref} />;
+}
+
+function App() {
+  const today = useMemo(() => new Date(), []);
+  const [cur, setCur] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const [data, setData] = useState({});
+  const [editing, setEditing] = useState(null);
+  const calRef = useRef(null), sheetRef = useRef(null), wsRef = useRef(null), calbodyRef = useRef(null);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [showEditor, setShowEditor] = useState(true);   // 에디터 UI — 기본 켜짐
+  const [confirmWipe, setConfirmWipe] = useState(false);
+
+  const toggle = (
+    <label className="toggle">
+      <input type="checkbox" checked={showEditor}
+        onChange={(e) => setShowEditor(e.target.checked)} />
+      에디터 UI
+    </label>
+  );
+  // 달력 칸·편집 패널·버튼 줄 바깥을 누르면 선택을 푼다
+  useEffect(() => {
+    if (!editing) return;
+    const onDown = (e) => {
+      const t = e.target;
+      if (t instanceof Element && t.closest(".cell, .editorpane, .bar, .toggle, .footbar")) return;
+      setEditing(null);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [editing]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(""), 4000);
+    return () => clearTimeout(t);
+  }, [notice]);
+  useEffect(() => {
+    if (!confirmWipe) return;
+    const t = setTimeout(() => setConfirmWipe(false), 5000);
+    return () => clearTimeout(t);
+  }, [confirmWipe]);
+
+  const y = cur.getFullYear(), m = cur.getMonth();
+  const monthKey = `${y}-${pad(m + 1)}`;
+  const restoreInput = useRef(null);
+
+  // 첫 실행 — 예전 localStorage 데이터 이관, 저장소 보존 요청
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try { await migrateFromLocalStorage(); } catch (e) {}
+      requestPersistence();
+      if (alive) setReady(true);
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    let alive = true;
+    idbGet(STORE, monthKey).then((v) => { if (alive) setData(v || {}); }).catch(() => { if (alive) setData({}); });
+    return () => { alive = false; };
+  }, [monthKey, ready]);
+
+  const persist = async (next) => {
+    setData(next);
+    try { await idbSet(STORE, monthKey, next); }
+    catch (e) { setNotice("저장하지 못했습니다. 저장 공간을 확인해 주세요."); return false; }
+    return true;
+  };
+
+  const days = useMemo(() => {
+    const first = new Date(y, m, 1).getDay();
+    const len = new Date(y, m + 1, 0).getDate();
+    const rows = Math.ceil((first + len) / 7);
+    const out = [];
+    for (let i = 0; i < rows * 7; i++) {
+      const d = i - first + 1;
+      const dt = new Date(y, m, d);
+      out.push({ dt, outside: d < 1 || d > len });
+    }
+    return out;
+  }, [y, m]);
+
+  // 창 크기가 바뀔 때마다 달력이 한 화면에 들어오도록 칸 폭을 다시 계산한다.
+  // 가로가 넓어도 세로가 모자라면 칸을 줄여서, 달력과 에디터가 언제나 함께 보이게 한다.
+  useLayoutEffect(() => {
+    const fit = () => {
+      const ws = wsRef.current, sheet = sheetRef.current, cal = calRef.current;
+      if (!ws || !sheet || !cal) return;
+      const cs = getComputedStyle(sheet);
+      const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+      const wsCs = getComputedStyle(ws);
+      const wsInner = ws.clientWidth - parseFloat(wsCs.paddingLeft) - parseFloat(wsCs.paddingRight);
+      const colW = Math.max(380, wsInner - (showEditor ? 372 + 16 : 0));   // 남는 폭 전부 사용
+      const maxCw = (colW - padX) / 7;                       // 가로로 허용되는 칸 폭
+
+      // 세로 예산 — 달력 격자 위/아래에 있는 것들만 직접 잰다.
+      // (페이지 전체 높이에서 빼는 방식은 에디터 높이에 끌려다녀서 되먹임이 생긴다)
+      const bodyTop = document.body.getBoundingClientRect().top;
+      const calRect = cal.getBoundingClientRect();
+      const bodyRect = calbodyRef.current ? calbodyRef.current.getBoundingClientRect() : calRect;
+      const above = calRect.top - bodyTop;                                   // 위쪽(저작권 줄·버튼 줄·머리글 등)
+      const below = (bodyRect.bottom - calRect.bottom)
+        + parseFloat(getComputedStyle(document.body).paddingBottom);         // 아래쪽(꼬리말·하단 버튼 줄)
+      const dowH = cal.firstElementChild ? cal.firstElementChild.getBoundingClientRect().height : 34;
+      const rows = Math.max(1, Math.round(days.length / 7));
+      // 세로 예산 — 달력은 언제나 화면 안에 들어오게 한다(에디터 높이와 무관)
+      const budget = window.innerHeight - above - below - 10;
+      const byHeight = ((budget - dowH) / rows) / 1.3;
+      const cw = Math.max(56, Math.min(maxCw, byHeight));
+      cal.style.setProperty("--cw", cw + "px");
+      ws.style.setProperty("--calw", Math.ceil(cw * 7 + padX) + "px");  // 달력 상자도 같이 맞춘다
+    };
+    fit();
+    const raf = requestAnimationFrame(fit);   // 레이아웃이 바뀐 뒤 한 번 더 맞춘다
+    window.addEventListener("resize", fit);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", fit); };
+  }, [days.length, showEditor, monthKey]);
+
+
+  return (
+    <>
+      <div className="legal">
+        <span>
+          <b className="brand">Stamp Diary</b>&nbsp;|&nbsp;Copyright 2026. MUJIMUJI Stamp Calendar&nbsp;|&nbsp;본 서비스(에디터)의 무단 복제, 확장 및 배포를 금지합니다.&nbsp;|&nbsp;
+          <a href="https://oauka.github.io/newluvbit_public/privacy_policy.html"
+            target="_blank" rel="noopener noreferrer">개인 정보 처리 방침</a>
+        </span>
+        <span>문의 및 버그 제보 Mail : <a href="mailto:mujimuji.purity012@aleeas.com">mujimuji.purity012@aleeas.com</a></span>
+      </div>
+
+      <div ref={wsRef} className={"workspace" + (showEditor ? "" : " noeditor")}>
+      <div className="bar">
+        <span className="now">{today.getFullYear()}.{pad(today.getMonth() + 1)}.{pad(today.getDate())}</span>
+        <button className="btn" onClick={() => setCur(new Date(y, m - 1, 1))}>← 이전</button>
+        <button className="btn" onClick={() => setCur(new Date(today.getFullYear(), today.getMonth(), 1))}>오늘</button>
+        <button className="btn" onClick={() => setCur(new Date(y, m + 1, 1))}>다음 →</button>
+        <button className="btn" disabled={saving} onClick={async () => {
+          setSaving(true);
+          try {
+            const blob = await renderCalendarPNG(y, m, days, data);
+            await saveFile(`calendar-${y}-${pad(m + 1)}.png`, blob);
+          } catch (err) {
+            if (!err || err.code !== "declined") setNotice("이미지를 저장하지 못했습니다.");
+          } finally { setSaving(false); }
+        }}>{saving ? "저장 중…" : "이미지 저장"}</button>
+
+        {notice && <span className="notice">{notice}</span>}
+        {!showEditor && toggle}
+      </div>
+
+      <div className="calbody" ref={calbodyRef}>
+      <div className="sheet" ref={sheetRef}>
+        <div className="head">
+          <span className="m">{MONTH[m]}</span>
+          <span className="ko">{pad(m + 1)}</span>
+          <span className="y">{y}</span>
+        </div>
+
+        <div className="cal" ref={calRef}>
+          {DOW.map((n, i) => (
+            <div key={n + i} className={"dow" + (i === 0 ? " s" : i === 6 ? " t" : "")}>{n}</div>
+          ))}
+          {days.map(({ dt, outside }, i) => {
+            const ks = dkey(dt.getFullYear(), dt.getMonth(), dt.getDate());
+            const dow = dt.getDay();
+            const stamp = data.stamps && data.stamps[ks];
+            const selected = editing && editing.date === ks;
+            return (
+              <div key={i}
+                className={"cell" + (outside ? " out" : "") + (dow === 0 ? " s" : "") +
+                  (dow === 6 ? " t" : "") + (selected ? " sel" : "")}
+                onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("drop"); }}
+                onDragLeave={(e) => e.currentTarget.classList.remove("drop")}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove("drop");
+                  const f = e.dataTransfer.files[0];
+                  if (!f) return;
+                  const reader = new FileReader();
+                  reader.onload = () => shrink(reader.result).then((s) =>
+                    setEditing({ date: ks, initial: { ...(stamp || {}), src: s, offX: 0, offY: 0, scale: 1, rotation: 0 } }));
+                  reader.readAsDataURL(f);
+                }}>
+                <span className="n">{dt.getDate()}</span>
+                <button className="slotbtn"
+                  aria-label={ks + (stamp ? " 우표 편집" : " 선택")}
+                  aria-pressed={selected ? "true" : "false"}
+                  onClick={() => setEditing({ date: ks, initial: stamp || null })}>
+                  {stamp ? <CellStamp stamp={stamp} /> : null}
+                </button>
+                {stamp && (
+                  <button className="delbtn" title="우표 삭제" aria-label={ks + " 우표 삭제"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const stamps = { ...(data.stamps || {}) };
+                      delete stamps[ks];
+                      persist({ ...data, stamps });
+                      if (selected) setEditing(null);
+                    }}>✕</button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="foot">
+          <span>{y} / {pad(m + 1)}</span>
+          <span className="ko">칸을 눌러 선택하면 오른쪽에서 우표를 편집합니다</span>
+        </div>
+      </div>
+
+      <div className="footbar">
+        <button className="btn" onClick={async () => {
+          if (!confirmWipe) { setConfirmWipe(true); return; }
+          setConfirmWipe(false);
+          const next = { ...data };
+          delete next.stamps;
+          if (await persist(next)) setEditing(null);   // 지운 결과는 달력에 바로 보이므로 따로 알리지 않는다
+        }}>{confirmWipe ? "한 번 더 누르면 삭제됩니다" : "전체 이미지 삭제"}</button>
+        <span style={{ fontSize: 11, color: "#A8A8A8" }}>
+          이 달({y}.{pad(m + 1)})에 붙인 우표를 모두 지웁니다
+        </span>
+
+        <span className="right">
+        <button className="btn" title="보고 있는 달의 우표를 파일로 내려받습니다"
+          onClick={async () => {
+            try {
+              await saveFile(`stamp_diary_${y}${pad(m + 1)}.json`, await buildBackup(monthKey));
+            } catch (err) {
+              if (!err || err.code !== "declined") setNotice("백업 파일을 만들지 못했습니다.");
+            }
+          }}>백업</button>
+
+        <button className="btn" title="우표가 들어 있는 모든 달을 한 파일로 내려받습니다"
+          onClick={async () => {
+            try {
+              const blob = await buildBackup();
+              const n = Object.keys(JSON.parse(await blob.text()).months).length;
+              if (!n) { setNotice("백업할 우표가 없습니다."); return; }
+              const stamp = `${today.getFullYear()}${pad(today.getMonth() + 1)}${pad(today.getDate())}`;
+              await saveFile(`stamp_diary_all_${stamp}.json`, blob);
+              setNotice(`${n}개월치를 백업했습니다.`);
+            } catch (err) {
+              if (!err || err.code !== "declined") setNotice("전체 백업 파일을 만들지 못했습니다.");
+            }
+          }}>전체 백업</button>
+
+        <button className="btn" title="백업 파일을 불러와 되돌립니다"
+          onClick={() => restoreInput.current && restoreInput.current.click()}>복원</button>
+        <input ref={restoreInput} type="file" accept="application/json,.json" style={{ display: "none" }}
+          onChange={async (e) => {
+            const f = e.target.files && e.target.files[0];
+            e.target.value = "";
+            if (!f) return;
+            try {
+              const keys = await restoreBackup(await f.text());
+              setEditing(null);
+              if (keys.length) {
+                const [ky, km] = keys[0].split("-");
+                setCur(new Date(+ky, +km - 1, 1));      // 불러온 달로 화면을 옮긴다
+                setData((await idbGet(STORE, keys[0])) || {});
+                setNotice(keys.length > 1
+                  ? `${keys.length}개월 복원 완료 — ${keys[0].replace("-", ".")} 화면으로 이동`
+                  : `${keys[0].replace("-", ".")} 복원 완료`);
+              } else setNotice("백업 파일에 담긴 달이 없습니다.");
+            } catch (err) { setNotice("복원하지 못했습니다 — 백업 파일이 맞는지 확인해 주세요."); }
+          }} />
+
+        </span>
+      </div>
+      </div>
+
+      {showEditor && toggle}
+      {showEditor && (
+        <StampEditorPanel
+          key={editing ? editing.date : "none"}
+          date={editing ? editing.date : null}
+          initial={editing ? editing.initial : null}
+          onClose={() => setShowEditor(false)}
+          onDelete={() => {
+            if (!editing) return;
+            const stamps = { ...(data.stamps || {}) };
+            delete stamps[editing.date];
+            persist({ ...data, stamps });
+            setEditing(null);
+          }}
+          onApply={(state) => {
+            // 붙인 뒤에도 패널은 열어둔다 — 바로 이어서 손볼 수 있게
+            if (!editing) return false;
+            const next = { ...data, stamps: { ...(data.stamps || {}), [editing.date]: state } };
+            return persist(next);
+          }}
+        />
+      )}
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
