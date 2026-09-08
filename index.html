@@ -39,8 +39,16 @@
     gap:28px; padding:clamp(28px,6vh,64px) var(--pad);
   }
   h1{
-    margin:0; font-size:clamp(20px,2.4vw,26px); font-weight:700;
+    margin:0; text-align:center;
+    font-size:clamp(19px,2.4vw,26px); font-weight:700;
     letter-spacing:.3em; text-indent:.3em; text-transform:uppercase; color:#5A5A5A;
+    line-height:1.5;
+  }
+  h1 .brk{display:none}
+  /* 좁은 화면에서는 두 줄로 나눠 가운데 정렬한다 */
+  @media (max-width:700px){
+    h1{letter-spacing:.24em; text-indent:.24em}
+    h1 .brk{display:block; content:""}
   }
   .cards{
     display:flex; flex-wrap:wrap; gap:16px; justify-content:center; width:100%;
@@ -72,7 +80,7 @@
   </div>
 
   <main>
-    <h1>Mujimuji Stamp Editor</h1>
+    <h1>Mujimuji<br class="brk">Stamp Editor</h1>
     <div class="cards">
       <a class="card" href="./diary/">
         <span class="en">Stamp Diary</span>
