@@ -987,6 +987,11 @@ function drawStamp(ctx, {
     }
     ctx.strokeStyle = "rgba(0,0,0,0.16)";
     ctx.lineWidth = Math.max(1, pxPerMm * 0.09);
+    // 톱니 원만 그리면 톱니가 없는 모서리 직선 구간에는 테가 없어서, 배경이 투명한
+    // 이미지에서 그쪽만 가장자리가 사라져 보인다. 외곽선 전체를 한 번 더 그린다
+    // (도형으로 클립돼 있어 바깥쪽 절반은 잘리고 안쪽 절반만 남는다).
+    traceStampPath(ctx, originX, originY, dispW, dispH, r, spacing, margin);
+    ctx.stroke();
     centers.forEach(([cx, cy]) => {
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
