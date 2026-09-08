@@ -147,6 +147,44 @@ const ImagePlaceholderIcon = ({ size }) => (
   </Icon>
 );
 
+// 파일 저장 — 환경마다 되는 방법이 달라서 순서대로 시도한다.
+// 1) 아티팩트 안: downloads 기능
+// 2) 모바일: 공유 시트(navigator.share) — iOS 사파리는 <a download> 로 blob 저장이 막혀 있다
+// 3) 그 외: 링크 클릭 방식
+// 4) 그래도 안 되면 새 탭으로 열어서 길게 눌러 저장할 수 있게 한다
+async function saveFile(filename, blob) {
+  if (window.claude && window.claude.use) {
+    const d = await window.claude.use("downloads").catch(() => null);
+    if (d) { await d.save({ filename, data: blob }); return; }
+  }
+  const type = blob.type || "application/octet-stream";
+  try {
+    const file = new File([blob], filename, { type });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file] });
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === "AbortError") return;   // 사용자가 공유를 취소함
+    // 공유가 안 되면 아래 방식으로 이어서 시도한다
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // download 속성을 무시하는 브라우저(구형 iOS 등)를 위해 잠시 뒤 새 탭으로도 열어준다
+  setTimeout(() => {
+    if (typeof HTMLAnchorElement !== "undefined" && !("download" in HTMLAnchorElement.prototype)) {
+      window.open(url, "_blank");
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }, 300);
+}
+
 // ---------- 우표 톱니(퍼포레이션) 경로 ----------
 // 네 변 가운데 부분에만 안쪽으로 오목한 반원 톱니를 나란히 배치하고,
 // 모서리 쪽에는 톱니를 넣지 않고 짧은 직선을 남겨 진짜 우표처럼 각이 살게 한다.
@@ -291,41 +329,32 @@ function normalizeClosedPoints(pts) {
 // 다각형 꼭짓점마다 지정한 반경의 원호를 끼워넣어 모서리를 둥글린다 —
 // 별의 "모서리 둥근" 버전에 사용. 별처럼 각이 아주 뾰족한 꼭짓점은 접선 길이가
 // 변 길이를 넘지 않도록 clamp해서(각 변의 48%까지만) 옆 모서리끼리 겹치지 않게 한다.
-function roundPolygonCorners(points, radius, stepsPerCorner = 10) {
+// 각 꼭짓점에서 양쪽 변을 cut 만큼 잘라내고 그 두 점을 꼭짓점을 제어점으로 하는
+// 2차 베지어로 이어 모서리를 둥글린다. 예전에는 원호(arc)로 이었는데, 별의 오목한
+// 꼭짓점처럼 각이 급한 곳에서 호가 반대로 돌아 고리가 생겼고 그 고리가 구멍처럼
+// 뚫려 보였다. 베지어는 항상 두 점 사이를 한 방향으로만 지나므로 그런 일이 없다.
+function roundPolygonCorners(points, cut, stepsPerCorner = 10) {
   const n = points.length;
   const out = [];
   for (let i = 0; i < n; i++) {
     const B = points[i];
     const P = points[(i - 1 + n) % n];
     const N = points[(i + 1) % n];
-    const d1v = [P[0] - B[0], P[1] - B[1]];
-    const d2v = [N[0] - B[0], N[1] - B[1]];
-    const d1 = Math.hypot(d1v[0], d1v[1]) || 1;
-    const d2 = Math.hypot(d2v[0], d2v[1]) || 1;
-    const ea = [d1v[0] / d1, d1v[1] / d1];
-    const eb = [d2v[0] / d2, d2v[1] / d2];
-    const cosang = Math.max(-1, Math.min(1, ea[0] * eb[0] + ea[1] * eb[1]));
-    const theta = Math.acos(cosang);
-    if (theta < 1e-6 || theta > Math.PI - 1e-6) {
-      out.push(B);
-      continue;
-    }
-    const req = radius / Math.tan(theta / 2);
-    const d = Math.min(req, d1 * 0.48, d2 * 0.48);
-    const rEff = d * Math.tan(theta / 2);
-    const T1 = [B[0] + ea[0] * d, B[1] + ea[1] * d];
-    const T2 = [B[0] + eb[0] * d, B[1] + eb[1] * d];
-    let bx = ea[0] + eb[0], by = ea[1] + eb[1];
-    const bl = Math.hypot(bx, by) || 1;
-    bx /= bl; by /= bl;
-    const centerDist = rEff / Math.sin(theta / 2);
-    const center = [B[0] + bx * centerDist, B[1] + by * centerDist];
-    const a1 = Math.atan2(T1[1] - center[1], T1[0] - center[0]);
-    const a2 = Math.atan2(T2[1] - center[1], T2[0] - center[0]);
-    const diff = ((a2 - a1 + Math.PI) % (2 * Math.PI)) - Math.PI;
+    const v1 = [P[0] - B[0], P[1] - B[1]];
+    const v2 = [N[0] - B[0], N[1] - B[1]];
+    const l1 = Math.hypot(v1[0], v1[1]) || 1;
+    const l2 = Math.hypot(v2[0], v2[1]) || 1;
+    // 잘라내는 길이는 인접한 변 길이의 절반을 넘지 않게 해서 모서리끼리 겹치지 않게 한다
+    const d = Math.min(cut, l1 * 0.5, l2 * 0.5);
+    const T1 = [B[0] + (v1[0] / l1) * d, B[1] + (v1[1] / l1) * d];
+    const T2 = [B[0] + (v2[0] / l2) * d, B[1] + (v2[1] / l2) * d];
     for (let s = 0; s <= stepsPerCorner; s++) {
-      const a = a1 + (diff * s) / stepsPerCorner;
-      out.push([center[0] + rEff * Math.cos(a), center[1] + rEff * Math.sin(a)]);
+      const t = s / stepsPerCorner;
+      const mt = 1 - t;
+      out.push([
+        mt * mt * T1[0] + 2 * mt * t * B[0] + t * t * T2[0],
+        mt * mt * T1[1] + 2 * mt * t * B[1] + t * t * T2[1],
+      ]);
     }
   }
   return out;
@@ -333,7 +362,7 @@ function roundPolygonCorners(points, radius, stepsPerCorner = 10) {
 
 // 별 모양 2가지 스타일 — 1: 각진 별, 2: 모서리가 둥근 별
 const STAR_POINTS = normalizeClosedPoints(makeStarVertices(5, 0.5));
-const STAR_POINTS_2 = normalizeClosedPoints(roundPolygonCorners(makeStarVertices(5, 0.5), 0.09, 10));
+const STAR_POINTS_2 = normalizeClosedPoints(roundPolygonCorners(makeStarVertices(5, 0.5), 0.2, 14));
 const STAR_VARIANTS = [STAR_POINTS, STAR_POINTS_2];
 
 // 두 직선(각각 점 2개로 정의)의 교차점을 구한다 — 오프셋 패스의 마이터 조인 계산용
@@ -1206,22 +1235,7 @@ function StampEditor() {
           filename = `${baseName}${counts[baseName]}.png`;
           counts[baseName] += 1;
         }
-        // 아티팩트 안에서는 downloads 기능으로, 일반 웹(배포본)에서는 링크로 저장한다
-        const downloads = (window.claude && window.claude.use)
-          ? await window.claude.use("downloads").catch(() => null)
-          : null;
-        if (downloads) {
-          await downloads.save({ filename, data: blob });
-        } else {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-        }
+        await saveFile(filename, blob);
       } catch (err) {
         if (err && err.code !== "declined") {
           console.error("다운로드 실패:", err);
