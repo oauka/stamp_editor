@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>스탬프 다이어리</title>
+<title>MUJIMUJI STAMP DIARY</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@300;400;500;700&display=swap">
@@ -178,7 +178,7 @@
     .cell.sel{outline:none}
   }
 
-  /* ── 우표 메이커에서 그대로 가져온 컨트롤 스타일 ── */
+  /* ── 우표 만들기에서 그대로 가져온 컨트롤 스타일 ── */
   input[type="range"].hue-slider{
     -webkit-appearance:none; appearance:none; width:100%; height:14px; border-radius:7px;
     background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);
@@ -230,7 +230,7 @@
 const { useRef, useState, useEffect, useLayoutEffect, useCallback, useMemo } = React;
 
 /* ═══════════════════════════════════════════════════════════
-   아래 도형·그리기 코드는 "우표 메이커"에서 그대로 가져온 것 —
+   아래 도형·그리기 코드는 "우표 만들기"에서 그대로 가져온 것 —
    톱니 경로, 하트/꽃/별 곡선, 달력 틀, drawStamp 전부 동일하다.
    ═══════════════════════════════════════════════════════════ */
 
@@ -833,7 +833,7 @@ function shrink(dataUrl) {
   });
 }
 
-/* ── 오른쪽 편집 패널 (우표 메이커 패널 그대로) ── */
+/* ── 오른쪽 편집 패널 (우표 만들기 패널 그대로) ── */
 function StampEditorPanel({ date, initial, onApply, onDelete, onClose }) {
   const base = { ...DEFAULT_STAMP, ...(initial || {}) };
   const [src, setSrc] = useState(initial && initial.src ? initial.src : null);
