@@ -1463,26 +1463,31 @@ function requestPersistence() {
   }
 }
 
-// 파일 저장 — 환경마다 되는 방법이 달라서 순서대로 시도한다.
+// 파일 저장 — 환경마다 되는 방법이 달라 순서대로 시도한다.
 // 1) 아티팩트 안: downloads 기능
-// 2) 모바일: 공유 시트(navigator.share) — iOS 사파리는 <a download> 로 blob 저장이 막혀 있다
-// 3) 그 외: 링크 클릭 방식
-// 4) 그래도 안 되면 새 탭으로 열어서 길게 눌러 저장할 수 있게 한다
+// 2) iOS: 공유 시트 — 사파리는 <a download> 로 blob 을 저장하지 못한다
+// 3) 그 외(안드로이드·PC): 링크 클릭 → 다운로드 폴더에 조용히 저장
+// 4) download 속성을 무시하는 구형 브라우저: 새 탭으로 열어 길게 눌러 저장
 async function saveFile(filename, blob) {
   if (window.claude && window.claude.use) {
     const d = await window.claude.use("downloads").catch(() => null);
     if (d) { await d.save({ filename, data: blob }); return; }
   }
+  // 안드로이드·PC 는 링크 방식이 조용히 다운로드 폴더에 저장되므로 그쪽을 먼저 쓴다.
+  // 공유 시트는 iOS(사파리)처럼 링크 저장이 막힌 곳에서만 띄운다.
   const type = blob.type || "application/octet-stream";
-  try {
-    const file = new File([blob], filename, { type });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file] });
-      return;
+  const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isIOS) {
+    try {
+      const file = new File([blob], filename, { type });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        return;
+      }
+    } catch (e) {
+      if (e && e.name === "AbortError") return;   // 사용자가 취소함
     }
-  } catch (e) {
-    if (e && e.name === "AbortError") return;   // 사용자가 공유를 취소함
-    // 공유가 안 되면 아래 방식으로 이어서 시도한다
   }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
