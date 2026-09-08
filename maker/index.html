@@ -1,0 +1,2241 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found]){display:none!important}</style></head><body>
+<title>우표 메이커</title>
+<style>
+  :root { --bg: #E6E6E4; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color-scheme: light; }
+  #root { min-height: 100vh; }
+  * { box-sizing: border-box; }
+  input[type="color"].swatch-input {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: none;
+    cursor: pointer;
+    display: block;
+  }
+  input[type="color"].swatch-input::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type="color"].swatch-input::-webkit-color-swatch { border: none; border-radius: 4px; }
+  input[type="color"].swatch-input::-moz-color-swatch { border: none; border-radius: 4px; }
+  input[type="range"].hue-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 14px;
+    border-radius: 7px;
+    background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"].hue-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #333;
+    box-shadow: 0 0 2px rgba(0,0,0,0.4);
+    cursor: pointer;
+  }
+  input[type="range"].hue-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #333;
+    cursor: pointer;
+  }
+  input[type="range"].ui-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 16px;
+    background: transparent;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"].ui-slider::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(
+      to right,
+      var(--thumb-color, #B88A5A) 0%,
+      var(--thumb-color, #B88A5A) var(--fill-percent, 0%),
+      var(--track-color, #E8DCC3) var(--fill-percent, 0%),
+      var(--track-color, #E8DCC3) 100%
+    );
+  }
+  input[type="range"].ui-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--thumb-color, #B88A5A);
+    border: 2px solid rgba(0,0,0,0.15);
+    cursor: pointer;
+    margin-top: -5px;
+  }
+  input[type="range"].ui-slider::-moz-range-track {
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(
+      to right,
+      var(--thumb-color, #B88A5A) 0%,
+      var(--thumb-color, #B88A5A) var(--fill-percent, 0%),
+      var(--track-color, #E8DCC3) var(--fill-percent, 0%),
+      var(--track-color, #E8DCC3) 100%
+    );
+  }
+  input[type="range"].ui-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--thumb-color, #B88A5A);
+    border: 2px solid rgba(0,0,0,0.15);
+    cursor: pointer;
+  }
+  input[type="number"] { -moz-appearance: textfield; }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+</style>
+
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.25.6/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+const { useRef, useState, useEffect, useCallback } = React;
+
+// ---------- 아이콘 (lucide 대체, 인라인 SVG) ----------
+const Icon = ({ children, size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    {children}
+  </svg>
+);
+const Upload = ({ size }) => (
+  <Icon size={size}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="17 8 12 3 7 8" />
+    <line x1="12" y1="3" x2="12" y2="15" />
+  </Icon>
+);
+const RotateCcw = ({ size }) => (
+  <Icon size={size}>
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <polyline points="3 3 3 8 8 8" />
+  </Icon>
+);
+const Download = ({ size }) => (
+  <Icon size={size}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
+  </Icon>
+);
+const ImagePlaceholderIcon = ({ size }) => (
+  <Icon size={size}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <path d="M21 15l-5-5L5 21" />
+  </Icon>
+);
+
+// ---------- 우표 톱니(퍼포레이션) 경로 ----------
+// 네 변 가운데 부분에만 안쪽으로 오목한 반원 톱니를 나란히 배치하고,
+// 모서리 쪽에는 톱니를 넣지 않고 짧은 직선을 남겨 진짜 우표처럼 각이 살게 한다.
+// centersOut 배열을 넘기면 톱니 중심 좌표를 모아 담아준다(그림자 표현에 재사용).
+function traceStampPath(ctx, x, y, w, h, r, spacing, margin, centersOut, skipBeginPath) {
+  const edges = [
+    { p0: [x, y], d: [1, 0], len: w },
+    { p0: [x + w, y], d: [0, 1], len: h },
+    { p0: [x + w, y + h], d: [-1, 0], len: w },
+    { p0: [x, y + h], d: [0, -1], len: h },
+  ];
+  if (!skipBeginPath) ctx.beginPath();
+  ctx.moveTo(x, y);
+  edges.forEach((edge) => {
+    const usable = Math.max(0, edge.len - margin * 2);
+    const count = Math.max(1, Math.round(usable / spacing));
+    const step = usable / count;
+    const angleD = Math.atan2(edge.d[1], edge.d[0]);
+    for (let i = 0; i < count; i++) {
+      const tc = margin + i * step + step / 2;
+      const cx = edge.p0[0] + edge.d[0] * tc;
+      const cy = edge.p0[1] + edge.d[1] * tc;
+      const preX = cx - edge.d[0] * r;
+      const preY = cy - edge.d[1] * r;
+      ctx.lineTo(preX, preY);
+      // pre -> post 를 안쪽으로 오목하게 파고드는 반원으로 연결 (진짜 톱니 자국)
+      ctx.arc(cx, cy, r, angleD + Math.PI, angleD, true);
+      if (centersOut) centersOut.push([cx, cy]);
+    }
+    const endX = edge.p0[0] + edge.d[0] * edge.len;
+    const endY = edge.p0[1] + edge.d[1] * edge.len;
+    ctx.lineTo(endX, endY);
+  });
+  ctx.closePath();
+}
+
+// ---------- 하트 모양 경로 ----------
+// 파라메트릭 하트 곡선을 [-1,1] 정사각 박스에 맞게 한 번만 정규화해둔다.
+// coeffs = [cos t 계수, cos 2t 계수, cos 3t 계수, cos 4t 계수] — 항이 많을수록 굴곡이
+// 늘어난다. xscale은 좌우 폭(뾰족한 정도/통통한 정도)을 조절한다.
+function makeHeartPoints(coeffs, xscale, steps = 160) {
+  const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * Math.PI * 2;
+    const x = xscale * Math.pow(Math.sin(t), 3);
+    let y = 0;
+    coeffs.forEach((c, idx) => {
+      y += c * Math.cos((idx + 1) * t);
+    });
+    pts.push([x, y]);
+  }
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  pts.forEach(([x, y]) => {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  });
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const half = Math.max(maxX - minX, maxY - minY) / 2;
+  return pts.map(([x, y]) => [(x - cx) / half, (y - cy) / half]);
+}
+
+// 하트 모양 3가지 스타일 — "모양" 선택기에서 고를 수 있다
+// 셋 다 같은 수식(makeHeartPoints) 계열이다 — 2, 3번은 참고 이미지의 실제 윤곽선을
+// 먼저 추출한 뒤, 그 윤곽선에 가장 가깝게 들어맞는 계수를 수치 최적화(챔퍼 거리 최소화)로
+// 역산해서 만들었다. 그래서 이미지 픽셀 잡티 없이 완전히 매끈하면서도 참고 이미지 실루엣과 거의 일치한다.
+const HEART_POINTS = makeHeartPoints([-13, 5, 2, 1], 16); // 1: 기본
+const HEART_POINTS_2 = makeHeartPoints([-17.965, 5.548, 2.762, 0.330], 20.388); // 2: 참고 이미지1 실루엣에 맞춘 계수
+const HEART_POINTS_3 = makeHeartPoints([-16.227, 4.469, 3.002, -0.082], 17.667); // 3: 참고 이미지2 실루엣에 맞춘 계수
+const HEART_VARIANTS = [HEART_POINTS, HEART_POINTS_2, HEART_POINTS_3];
+
+// ---------- 꽃(4/5/6잎) 모양 경로 ----------
+// 극좌표 r(t) = 기본 반지름 + 진폭*cos(꽃잎 수 * t) 로 꽃잎 모양을 만들고,
+// 하트와 동일하게 [-1,1] 박스에 맞춰 정규화한다.
+// notch를 주면 잎 끝 중앙이 살짝 패여서(하트처럼) 네잎클로버 느낌이 난다.
+function makeFlowerPoints(petals, { floor = 0.3, exponent = 0.55, notch = 0, notchWidth = 0.35, steps = 300 } = {}) {
+  const petalAngle = (Math.PI * 2) / petals;
+  const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * Math.PI * 2;
+    // 잎 하나짜리 각도 구간 안에서의 위치(-1~1, 잎 중앙이 0)
+    const local = (((t % petalAngle) + petalAngle) % petalAngle) - petalAngle / 2;
+    const u = local / (petalAngle / 2);
+    const shape = Math.cos(u * (Math.PI / 2)); // 잎 중앙에서 1, 잎과 잎 사이 경계에서 0
+    let r = floor + (1 - floor) * Math.pow(Math.max(0, shape), exponent);
+    if (notch) {
+      r -= notch * Math.exp(-Math.pow(u / notchWidth, 2));
+    }
+    pts.push([r * Math.cos(t), r * Math.sin(t)]);
+  }
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  pts.forEach(([x, y]) => {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  });
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const half = Math.max(maxX - minX, maxY - minY) / 2;
+  return pts.map(([x, y]) => [(x - cx) / half, (y - cy) / half]);
+}
+
+// 4잎은 네잎클로버 느낌이 나도록 잎 끝에 하트 같은 노치를 준다. 5, 6잎은 기존처럼 매끈한 꽃잎.
+const FLOWER_POINTS_4 = makeFlowerPoints(4, { floor: 0.42, exponent: 0.6, notch: 0.28, notchWidth: 0.32 });
+const FLOWER_POINTS_5 = makeFlowerPoints(5, { floor: 0.3, exponent: 0.55 });
+const FLOWER_POINTS_6 = makeFlowerPoints(6, { floor: 0.35, exponent: 0.55 });
+const FLOWER_VARIANTS_BY_PETALS = { 4: FLOWER_POINTS_4, 5: FLOWER_POINTS_5, 6: FLOWER_POINTS_6 };
+const FLOWER_POINTS = FLOWER_POINTS_5;
+
+// ---------- 별 모양 경로 ----------
+// 각진 다각형이라 굴곡 샘플링 없이 꼭짓점만으로 충분하다.
+function makeStarVertices(spikes = 5, innerRatio = 0.5) {
+  const pts = [];
+  for (let i = 0; i < spikes * 2; i++) {
+    const rr = i % 2 === 0 ? 1 : innerRatio;
+    const angle = -Math.PI / 2 + (i * Math.PI) / spikes;
+    pts.push([rr * Math.cos(angle), rr * Math.sin(angle)]);
+  }
+  return pts;
+}
+
+// 꼭짓점 목록을 [-1,1] 박스에 맞춰 정규화하고 첫 점을 끝에 다시 붙여 닫는다.
+function normalizeClosedPoints(pts) {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  pts.forEach(([x, y]) => {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  });
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const half = Math.max(maxX - minX, maxY - minY) / 2;
+  const norm = pts.map(([x, y]) => [(x - cx) / half, (y - cy) / half]);
+  norm.push(norm[0]);
+  return norm;
+}
+
+// 다각형 꼭짓점마다 지정한 반경의 원호를 끼워넣어 모서리를 둥글린다 —
+// 별의 "모서리 둥근" 버전에 사용. 별처럼 각이 아주 뾰족한 꼭짓점은 접선 길이가
+// 변 길이를 넘지 않도록 clamp해서(각 변의 48%까지만) 옆 모서리끼리 겹치지 않게 한다.
+function roundPolygonCorners(points, radius, stepsPerCorner = 10) {
+  const n = points.length;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const B = points[i];
+    const P = points[(i - 1 + n) % n];
+    const N = points[(i + 1) % n];
+    const d1v = [P[0] - B[0], P[1] - B[1]];
+    const d2v = [N[0] - B[0], N[1] - B[1]];
+    const d1 = Math.hypot(d1v[0], d1v[1]) || 1;
+    const d2 = Math.hypot(d2v[0], d2v[1]) || 1;
+    const ea = [d1v[0] / d1, d1v[1] / d1];
+    const eb = [d2v[0] / d2, d2v[1] / d2];
+    const cosang = Math.max(-1, Math.min(1, ea[0] * eb[0] + ea[1] * eb[1]));
+    const theta = Math.acos(cosang);
+    if (theta < 1e-6 || theta > Math.PI - 1e-6) {
+      out.push(B);
+      continue;
+    }
+    const req = radius / Math.tan(theta / 2);
+    const d = Math.min(req, d1 * 0.48, d2 * 0.48);
+    const rEff = d * Math.tan(theta / 2);
+    const T1 = [B[0] + ea[0] * d, B[1] + ea[1] * d];
+    const T2 = [B[0] + eb[0] * d, B[1] + eb[1] * d];
+    let bx = ea[0] + eb[0], by = ea[1] + eb[1];
+    const bl = Math.hypot(bx, by) || 1;
+    bx /= bl; by /= bl;
+    const centerDist = rEff / Math.sin(theta / 2);
+    const center = [B[0] + bx * centerDist, B[1] + by * centerDist];
+    const a1 = Math.atan2(T1[1] - center[1], T1[0] - center[0]);
+    const a2 = Math.atan2(T2[1] - center[1], T2[0] - center[0]);
+    const diff = ((a2 - a1 + Math.PI) % (2 * Math.PI)) - Math.PI;
+    for (let s = 0; s <= stepsPerCorner; s++) {
+      const a = a1 + (diff * s) / stepsPerCorner;
+      out.push([center[0] + rEff * Math.cos(a), center[1] + rEff * Math.sin(a)]);
+    }
+  }
+  return out;
+}
+
+// 별 모양 2가지 스타일 — 1: 각진 별, 2: 모서리가 둥근 별
+const STAR_POINTS = normalizeClosedPoints(makeStarVertices(5, 0.5));
+const STAR_POINTS_2 = normalizeClosedPoints(roundPolygonCorners(makeStarVertices(5, 0.5), 0.09, 10));
+const STAR_VARIANTS = [STAR_POINTS, STAR_POINTS_2];
+
+// 두 직선(각각 점 2개로 정의)의 교차점을 구한다 — 오프셋 패스의 마이터 조인 계산용
+function lineIntersect(p1, p2, p3, p4) {
+  const [x1, y1] = p1, [x2, y2] = p2, [x3, y3] = p3, [x4, y4] = p4;
+  const d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (Math.abs(d) < 1e-6) return null;
+  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
+  return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
+}
+
+// 일러스트레이터의 "패스 이동(Offset Path, 각진 연결)"과 같은 방식 — 각 변(edge)을
+// 실제로 insetPx 픽셀만큼 안쪽으로 평행이동한 뒤, 인접한 두 변을 잇는다. 대부분의
+// 지점은 두 변의 교차점(마이터)으로 잇고, 하트 위쪽 오목한 꼭짓점이나 아래 뾰족한
+// 끝처럼 각이 아주 급격해 교차점이 의미 없어지는 지점만 두 변의 끝점을 직선으로
+// 그대로 이어서(각진 연결) — 원래 모양의 각을 그대로 유지하면서 끊김 없이 연결한다.
+// 라운드로 둥글리지 않는다. 하트/꽃 모두 같은 함수를 쓰고, points만 다르게 넘긴다.
+function traceCurvePath(ctx, x, y, w, h, insetPx, skipBeginPath, points) {
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const hw = w / 2;
+  const hh = h / 2;
+  const base = points.map(([nx, ny]) => [cx + nx * hw, cy + ny * hh]);
+  const n = base.length; // base[0] === base[n-1] (닫힌 곡선)
+
+  if (!skipBeginPath) ctx.beginPath();
+
+  if (!insetPx) {
+    base.forEach(([px, py], i) => (i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)));
+    ctx.closePath();
+    return;
+  }
+
+  const edgeCount = n - 1;
+  const offsetEdges = [];
+  for (let i = 0; i < edgeCount; i++) {
+    const p0 = base[i], p1 = base[i + 1];
+    let dx = p1[0] - p0[0], dy = p1[1] - p0[1];
+    const dl = Math.hypot(dx, dy) || 1;
+    dx /= dl;
+    dy /= dl;
+    let ex = -dy, ey = dx; // 두 후보 법선 중 중심을 향하는 쪽을 고른다
+    const mx = (p0[0] + p1[0]) / 2, my = (p0[1] + p1[1]) / 2;
+    if (ex * (cx - mx) + ey * (cy - my) < 0) {
+      ex = -ex;
+      ey = -ey;
+    }
+    offsetEdges.push({
+      a: [p0[0] + ex * insetPx, p0[1] + ey * insetPx],
+      b: [p1[0] + ex * insetPx, p1[1] + ey * insetPx],
+    });
+  }
+
+  const miterLimit = insetPx * 4;
+  let started = false;
+  const moveOrLine = ([px, py]) => {
+    if (!started) {
+      ctx.moveTo(px, py);
+      started = true;
+    } else {
+      ctx.lineTo(px, py);
+    }
+  };
+
+  for (let i = 0; i < edgeCount; i++) {
+    const prevEdge = offsetEdges[(i - 1 + edgeCount) % edgeCount];
+    const curEdge = offsetEdges[i];
+    const inter = lineIntersect(prevEdge.a, prevEdge.b, curEdge.a, curEdge.b);
+    if (inter && Math.hypot(inter[0] - base[i][0], inter[1] - base[i][1]) < miterLimit) {
+      moveOrLine(inter);
+    } else {
+      // 마이터가 성립하지 않는 급격한 지점 — 두 변의 오프셋 끝점을 그대로 직선으로
+      // 이어서(각진 연결), 원래 하트의 뾰족한 각을 유지하면서 구멍 없이 연결한다.
+      moveOrLine(prevEdge.b);
+      moveOrLine(curEdge.a);
+    }
+  }
+  ctx.closePath();
+}
+
+// 간격 프리셋 — 임의 수치 대신 3단계만 허용해 항상 자연스러운 톱니가 나오게 함
+const PERFORATION_LEVELS = {
+  small: { label: "좁게", rMm: 0.42 },
+  medium: { label: "보통", rMm: 0.62 },
+  large: { label: "넓게", rMm: 0.9 },
+};
+const PERFORATION_SPACING_RATIO = 3.1; // 톱니 중심 간격 = 반지름 x 3.1 (원 사이에 평평한 여백을 둬서 가시처럼 뾰족해지는 것을 막음)
+const PERFORATION_CORNER_MARGIN_RATIO = 1.4; // 모서리에서 첫 톱니까지 남겨둘 여백 = 반지름 x 1.4
+const BORDER_MM = 1.3; // 테두리 두께는 항상 실제 mm 고정값 — 우표 크기를 바꿔도 두께 비율이 안 변해서 안 찌그러짐
+const BORDER_SEAM_INSET_MM = 0.3; // 여백 켰을 때 이미지 가장자리를 안쪽으로 살짝 숨겨서 이음매가 지저분해 보이는 것을 막음
+
+const COLOR_PALETTE = ["#FFFFFF", "#000000"];
+
+// 모양별 기본 사이즈 — 우표는 직사각형이 자연스럽고, 하트/꽃은 정사각형이 자연스럽다
+const DEFAULT_SIZE = {
+  stamp: { w: 25, h: 22 },
+  heart: { w: 25, h: 25 },
+  flower: { w: 25, h: 25 },
+  star: { w: 25, h: 25 },
+  calendar: { w: 25, h: 25 },
+};
+
+// 정규화된 [-1,1] 좌표 점 목록을 실제 하트 모양 그대로의 SVG 아이콘 path로 바꾼다 —
+// "모양" 선택 버튼에 진짜 그 스타일의 실루엣을 아이콘으로 보여주기 위한 용도
+function curvePointsToIconPath(points, size = 26, pad = 3) {
+  const inner = size - pad * 2;
+  return (
+    points
+      .map(([nx, ny], i) => {
+        const px = pad + ((nx + 1) / 2) * inner;
+        const py = pad + ((ny + 1) / 2) * inner;
+        return `${i === 0 ? "M" : "L"}${px.toFixed(2)},${py.toFixed(2)}`;
+      })
+      .join(" ") + " Z"
+  );
+}
+
+// 내부 패널 배경 2가지 버전(커피 톤 팔레트) — 어두운 버전 / 밝은 버전
+const PANEL_THEMES = {
+  light: {
+    panel: "#F9F5EF",    // 내부 바탕색
+    onPanel: "#6C8A9B",  // 그 외 (제목 등 텍스트)
+    muted: "#6C8A9B",    // 그 외
+    border: "#6C8A9B",   // 그 외
+    inputBg: "#FFFFFF",
+  },
+};
+
+// ---------- 색상 변환 (HSV <-> HEX) — 커스텀 색상 피커에서 사용 ----------
+function hsvToRgb(h, s, v) {
+  const c = v * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = v - c;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) { r = c; g = x; b = 0; }
+  else if (h < 120) { r = x; g = c; b = 0; }
+  else if (h < 180) { r = 0; g = c; b = x; }
+  else if (h < 240) { r = 0; g = x; b = c; }
+  else if (h < 300) { r = x; g = 0; b = c; }
+  else { r = c; g = 0; b = x; }
+  return [
+    Math.round((r + m) * 255),
+    Math.round((g + m) * 255),
+    Math.round((b + m) * 255),
+  ];
+}
+function rgbToHex(r, g, b) {
+  return (
+    "#" +
+    [r, g, b]
+      .map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0"))
+      .join("")
+      .toUpperCase()
+  );
+}
+function hsvToHex(h, s, v) {
+  const [r, g, b] = hsvToRgb(h, s, v);
+  return rgbToHex(r, g, b);
+}
+function hexToRgb(hex) {
+  const clean = (hex || "").replace("#", "").trim();
+  const full = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean;
+  const num = parseInt(full, 16);
+  if (full.length !== 6 || isNaN(num)) return [0, 0, 0];
+  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+}
+function rgbToHsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const d = max - min;
+  let h = 0;
+  if (d !== 0) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  const s = max === 0 ? 0 : d / max;
+  const v = max;
+  return { h, s, v };
+}
+function hexToHsv(hex) {
+  const [r, g, b] = hexToRgb(hex);
+  return rgbToHsv(r, g, b);
+}
+
+function ColorDot({ color, onClick, active, size = 18 }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="색상 변경"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        border: active ? "2px solid #FD6574" : "1.5px solid rgba(0,0,0,0.18)",
+        background: color,
+        cursor: "pointer",
+        padding: 0,
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
+const SLIDER_LABEL_WIDTH = 78;
+const SLIDER_ROW_GAP = 8;
+const SLIDER_SLOT_WIDTH = 58;
+
+function SliderRow({ label, value, min, max, step, unit, onChange, T, swatch }) {
+  const pct = ((value - min) / (max - min)) * 100;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: SLIDER_ROW_GAP, marginBottom: 10 }}>
+      <span style={{ fontSize: 12, color: T.muted, width: SLIDER_LABEL_WIDTH, flexShrink: 0, whiteSpace: "nowrap" }}>
+        {label}
+      </span>
+      <input
+        type="range"
+        className="ui-slider"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          "--track-color": T.sliderTrack,
+          "--thumb-color": T.accent,
+          "--fill-percent": `${pct}%`,
+        }}
+      />
+      <span style={{ fontSize: 12, color: T.muted, width: 42, textAlign: "right", flexShrink: 0 }}>
+        {value.toFixed(1)}
+        {unit}
+      </span>
+      <span style={{ width: SLIDER_SLOT_WIDTH, display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
+        {swatch || null}
+      </span>
+    </div>
+  );
+}
+
+function SwatchBox({ color, onClick, active, T, width = 34, height = 26 }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="색상 변경"
+      style={{
+        width,
+        height,
+        borderRadius: 4,
+        border: active ? "2px solid #FD6574" : `1px solid ${T.pageBg}`,
+        background: color,
+        cursor: "pointer",
+        padding: 0,
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
+// 둥근 사각형 경로 — 달력 틀의 카드 본체/테두리에 사용
+function roundedRectPath(ctx, x, y, w, h, r) {
+  const rad = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.lineTo(x + w - rad, y);
+  ctx.arcTo(x + w, y, x + w, y + rad, rad);
+  ctx.lineTo(x + w, y + h - rad);
+  ctx.arcTo(x + w, y + h, x + w - rad, y + h, rad);
+  ctx.lineTo(x + rad, y + h);
+  ctx.arcTo(x, y + h, x, y + h - rad, rad);
+  ctx.lineTo(x, y + rad);
+  ctx.arcTo(x, y, x + rad, y, rad);
+  ctx.closePath();
+}
+
+// 달력 틀의 카드/이미지 영역 좌표를 계산하는 공용 함수 — 캔버스에 실제로 그릴 때와
+// (이미지가 없을 때) 안내 아이콘을 화면에 정확히 겹쳐 그릴 때 모두 이 함수로 계산해서
+// 두 계산이 어긋나 아이콘이 이미지 영역 중앙에서 벗어나는 일이 없도록 한다.
+function calendarLayout(canvasW, canvasH, stampW, stampH, calendarInnerShape = "rect") {
+  const topMarginFrac = 0.14;
+  const bottomMarginFrac = 0.05;
+  const availH = canvasH * (1 - topMarginFrac - bottomMarginFrac);
+  const pxPerMm = Math.min(canvasW / stampW, availH / stampH);
+  const dispW = stampW * pxPerMm;
+  const dispH = stampH * pxPerMm;
+  const originX = (canvasW - dispW) / 2;
+  const originY = canvasH * topMarginFrac + (availH - dispH) / 2;
+  const cornerR = Math.min(dispW, dispH) * 0.11;
+  const headerH = dispH * 0.15;
+  const pad = Math.min(dispW, dispH) * 0.10;
+  // 하트/꽃/별처럼 곡선 도형은 원래 여백 없이도 시각적으로 안 꽉 차 보이므로,
+  // 사각형/우표보다 여백을 훨씬 좁게 둬서 더 크게 보이도록 한다.
+  const isCurveInner = calendarInnerShape === "heart" || calendarInnerShape === "flower" || calendarInnerShape === "star";
+  const imgPad = isCurveInner ? pad * 0.35 : pad;
+  const imgX = originX + imgPad;
+  const imgY = originY + headerH + imgPad;
+  const imgW = Math.max(1, dispW - imgPad * 2);
+  const imgH = Math.max(1, dispH - headerH - imgPad * 2);
+  return { pxPerMm, dispW, dispH, originX, originY, cornerR, headerH, pad, imgPad, imgX, imgY, imgW, imgH };
+}
+
+// ---------- 달력 틀 ----------
+// 우표/하트/꽃/별처럼 이미지를 도형으로 잘라내는 게 아니라, 둥근 사각형 카드 안에
+// 위쪽 헤더 밴드 + 스프링(고리) 2개를 그리고, 그 아래 여백을 둔 사각 영역에 이미지를 넣는
+// 완전히 다른 레이아웃이라 별도 함수로 분리했다. 스프링은 카드 클립 밖에서 그려야
+// 위쪽 테두리 위로 튀어나온 부분이 잘리지 않는다.
+function drawCalendarFrame(ctx, {
+  canvasW, canvasH, stampW, stampH, img, offX, offY, scale, rotation, checker,
+  calendarBorderColor = "#333333",
+  calendarHeaderColor = "#F4D9A0",
+  calendarSpringColor = "#2E3A46",
+  calendarBorderWidthMm = 1.0,
+  calendarInnerShape = "rect",
+  heartStyle = 1,
+  petalCount = 5,
+  starStyle = 1,
+  perforation = "medium",
+}) {
+  ctx.clearRect(0, 0, canvasW, canvasH);
+  const { pxPerMm, dispW, dispH, originX, originY, cornerR, headerH, imgX, imgY, imgW, imgH } =
+    calendarLayout(canvasW, canvasH, stampW, stampH, calendarInnerShape);
+  const borderWidthPx = Math.max(1, calendarBorderWidthMm * pxPerMm);
+
+  // 1) 카드 본체(둥근 사각형)로 클립하고 흰 배경 + 헤더 밴드 + 이미지(또는 체크보드)를 그린다
+  ctx.save();
+  roundedRectPath(ctx, originX, originY, dispW, dispH, cornerR);
+  ctx.clip();
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(originX, originY, dispW, dispH);
+
+  ctx.fillStyle = calendarHeaderColor;
+  ctx.fillRect(originX, originY, dispW, headerH);
+
+  ctx.save();
+  ctx.beginPath();
+  if (calendarInnerShape === "stamp") {
+    const level = PERFORATION_LEVELS[perforation] || PERFORATION_LEVELS.medium;
+    const maxR = Math.min(imgW, imgH) / 10;
+    const r = Math.min(level.rMm * pxPerMm, maxR);
+    const spacing = r * PERFORATION_SPACING_RATIO;
+    const margin = r * PERFORATION_CORNER_MARGIN_RATIO;
+    traceStampPath(ctx, imgX, imgY, imgW, imgH, r, spacing, margin, null, true);
+  } else if (calendarInnerShape === "heart" || calendarInnerShape === "flower" || calendarInnerShape === "star") {
+    const innerPoints = calendarInnerShape === "flower"
+      ? (FLOWER_VARIANTS_BY_PETALS[petalCount] || FLOWER_POINTS)
+      : calendarInnerShape === "star"
+      ? (STAR_VARIANTS[starStyle - 1] || STAR_POINTS)
+      : (HEART_VARIANTS[heartStyle - 1] || HEART_POINTS);
+    // 하트/꽃/별의 원본 좌표는 정사각형 기준으로 정규화되어 있어서, 직사각형인
+    // 이미지 영역(imgW !== imgH)에 그대로 매핑하면 눌린 것처럼 찌그러져 보인다.
+    // 그래서 이미지 영역 안에 꽉 차는 정사각형을 가운데 잡아 그 안에서만 그린다.
+    const shapeSize = Math.min(imgW, imgH);
+    const shapeX = imgX + (imgW - shapeSize) / 2;
+    const shapeY = imgY + (imgH - shapeSize) / 2;
+    traceCurvePath(ctx, shapeX, shapeY, shapeSize, shapeSize, 0, true, innerPoints);
+  } else {
+    ctx.rect(imgX, imgY, imgW, imgH);
+  }
+  ctx.clip();
+
+  if (checker) {
+    const cs = 10;
+    for (let cy = imgY; cy < imgY + imgH; cy += cs) {
+      for (let cx = imgX; cx < imgX + imgW; cx += cs) {
+        const on = (Math.floor((cx - imgX) / cs) + Math.floor((cy - imgY) / cs)) % 2 === 0;
+        ctx.fillStyle = on ? "#FAFAFA" : "#DCDCDC";
+        ctx.fillRect(cx, cy, cs, cs);
+      }
+    }
+  }
+
+  if (img) {
+    ctx.save();
+    const cx = imgX + imgW / 2 + offX * imgW;
+    const cy = imgY + imgH / 2 + offY * imgH;
+    const baseScale = Math.max(imgW / img.naturalWidth, imgH / img.naturalHeight);
+    ctx.translate(cx, cy);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.scale(scale, scale);
+    ctx.drawImage(
+      img,
+      (-img.naturalWidth * baseScale) / 2,
+      (-img.naturalHeight * baseScale) / 2,
+      img.naturalWidth * baseScale,
+      img.naturalHeight * baseScale
+    );
+    ctx.restore();
+  }
+  ctx.restore(); // 이미지 영역 클립 해제
+  ctx.restore(); // 카드 클립 해제
+
+  // 2) 카드 테두리 — 스프링보다 먼저 그려서, 스프링이 테두리 선 위를 자연스럽게
+  // 덮어 지나가도록 한다(스프링을 나중에 그려야 테두리 선이 스프링 중간을 가로질러
+  // 이상하게 끊겨 보이는 문제가 없다).
+  ctx.strokeStyle = calendarBorderColor;
+  ctx.lineWidth = borderWidthPx;
+  roundedRectPath(ctx, originX, originY, dispW, dispH, cornerR);
+  ctx.stroke();
+
+  // 3) 스프링(고리) 2개 — 카드 클립 밖에서, 테두리보다 나중에 그려서 위쪽 테두리 위로
+  // 확실히 튀어나와 보이게 한다. 위치·굵기·튀어나온 정도는 사용자가 그려준 참고
+  // 이미지를 실측해서 맞췄다.
+  const springW = dispW * 0.092;
+  const springTopY = originY - dispH * 0.09;
+  const springBottomY = originY + headerH * 0.58;
+  const springH = springBottomY - springTopY;
+  [0.226, 0.774].forEach((fx) => {
+    const cx = originX + dispW * fx;
+    ctx.fillStyle = calendarSpringColor;
+    roundedRectPath(ctx, cx - springW / 2, springTopY, springW, springH, springW / 2);
+    ctx.fill();
+  });
+}
+
+function drawStamp(ctx, {
+  canvasW, canvasH, stampW, stampH, img, offX, offY, scale, rotation, checker,
+  shape = "stamp",
+  heartStyle = 1,
+  petalCount = 5,
+  starStyle = 1,
+  calendarBorderColor = "#333333",
+  calendarHeaderColor = "#F4D9A0",
+  calendarSpringColor = "#2E3A46",
+  calendarBorderWidthMm = 1.0,
+  calendarInnerShape = "rect",
+  perforation = "medium", borderOn = false, borderColor = "#FFFFFF",
+  lineBorderMode = "none", lineBorderWidthMm = 0.6, lineBorderWidthMm2 = 0.6,
+  lineBorderColor = "#FFFFFF", lineBorderColor2 = "#FFFFFF",
+  lineBorderInsetMm = 1.4, lineBorderInset2Mm = 3.0,
+}) {
+  if (shape === "calendar") {
+    drawCalendarFrame(ctx, {
+      canvasW, canvasH, stampW, stampH, img, offX, offY, scale, rotation, checker,
+      calendarBorderColor, calendarHeaderColor, calendarSpringColor,
+      calendarBorderWidthMm, calendarInnerShape, heartStyle, petalCount, starStyle, perforation,
+    });
+    return;
+  }
+  ctx.clearRect(0, 0, canvasW, canvasH);
+
+  const pxPerMm = Math.min(canvasW / stampW, canvasH / stampH);
+  const dispW = stampW * pxPerMm;
+  const dispH = stampH * pxPerMm;
+  const originX = (canvasW - dispW) / 2;
+  const originY = (canvasH - dispH) / 2;
+  const isStamp = shape === "stamp";
+
+  const level = PERFORATION_LEVELS[perforation] || PERFORATION_LEVELS.medium;
+  // 우표 크기가 아주 작을 때 톱니가 너무 커져 모양이 깨지는 것을 막는 안전 상한
+  const maxR = Math.min(dispW, dispH) / 10;
+  const r = Math.min(level.rMm * pxPerMm, maxR);
+  const spacing = r * PERFORATION_SPACING_RATIO;
+  const margin = r * PERFORATION_CORNER_MARGIN_RATIO;
+
+  // 도형별 경로를 하나의 인터페이스로 그리기 위한 헬퍼 —
+  // 우표는 기존 mm 기반 톱니 경로를, 하트/꽃은 같은 오프셋 패스 로직에 서로 다른
+  // 좌표 목록(HEART_POINTS/FLOWER_POINTS)만 넘겨서 재사용한다.
+  const curvePoints = shape === "flower"
+    ? (FLOWER_VARIANTS_BY_PETALS[petalCount] || FLOWER_POINTS)
+    : shape === "star"
+    ? (STAR_VARIANTS[starStyle - 1] || STAR_POINTS)
+    : (HEART_VARIANTS[heartStyle - 1] || HEART_POINTS);
+  const tracePath = (x, y, w, h, insetPx, centersOut, skipBeginPath) => {
+    if (isStamp) {
+      traceStampPath(ctx, x, y, w, h, r, spacing, margin, centersOut, skipBeginPath);
+    } else {
+      traceCurvePath(ctx, x, y, w, h, insetPx, skipBeginPath, curvePoints);
+    }
+  };
+
+  // 테두리는 이미지 크기에 영향 주지 않는다 — 이미지는 항상 톱니 안쪽 전체 기준으로 그리고,
+  // 테두리를 켜면 그 위에 고정 두께(mm)의 색 테를 "덧칠"만 한다.
+  const borderPx = Math.min(BORDER_MM * pxPerMm, Math.min(dispW, dispH) / 3);
+  const contentX = originX + borderPx;
+  const contentY = originY + borderPx;
+  const contentW = Math.max(1, dispW - borderPx * 2);
+  const contentH = Math.max(1, dispH - borderPx * 2);
+
+  // 1) 도형 모양으로 클립하고 체커보드 + 이미지를 항상 전체 영역 기준으로 그린다
+  const centers = [];
+  ctx.save();
+  tracePath(originX, originY, dispW, dispH, 0, centers);
+  ctx.clip();
+
+  if (checker) {
+    const cs = 10;
+    for (let cy = originY; cy < originY + dispH; cy += cs) {
+      for (let cx = originX; cx < originX + dispW; cx += cs) {
+        const on = (Math.floor((cx - originX) / cs) + Math.floor((cy - originY) / cs)) % 2 === 0;
+        ctx.fillStyle = on ? "#FAFAFA" : "#DCDCDC";
+        ctx.fillRect(cx, cy, cs, cs);
+      }
+    }
+  }
+
+  // 여백(테두리 색)을 켰을 때, 이미지 가장자리와 테두리 색 사이의 이음매가
+  // 안티앨리어싱 때문에 지저분해 보이는 것을 막기 위해 이미지를 아주 살짝(0.3mm)
+  // 안쪽으로 추가 클리핑한다. 테두리 색이 그만큼 더 안쪽까지 덮어서 이음매를 가린다.
+  const borderSeamInsetPx = BORDER_SEAM_INSET_MM * pxPerMm;
+  const seamX = contentX + borderSeamInsetPx;
+  const seamY = contentY + borderSeamInsetPx;
+  const seamW = Math.max(1, contentW - borderSeamInsetPx * 2);
+  const seamH = Math.max(1, contentH - borderSeamInsetPx * 2);
+
+  if (img) {
+    // 이미지의 이동/회전/확대는 이 블록 안에서만 적용되도록 감싼다.
+    // (이전엔 save/restore 없이 transform을 걸어서, 그 뒤에 그리는 테두리 링까지
+    //  이미지 위치·회전·배율을 따라 같이 움직이는 버그가 있었다.)
+    ctx.save();
+    if (borderOn && isStamp) {
+      // 하트/꽃은 이미지를 따로 인셋 클립하지 않는다 — 대신 아래에서 여백 색을
+      // 하트 외곽선 자체를 따라 굵게 스트로크해서 그 위에 덧칠하므로, 이미지가
+      // 어디까지 그려지든 여백 두께(0.3mm 여유 포함)만큼은 항상 확실히 덮인다.
+      // 클립 경로를 따로 계산하면 그 경로가 스트로크 경계와 살짝 어긋나면서
+      // 모서리에 이미지가 삐져나와 보이는 문제가 있었다.
+      ctx.beginPath();
+      ctx.rect(seamX, seamY, seamW, seamH);
+      ctx.clip();
+    }
+    const cx = originX + dispW / 2 + offX * dispW;
+    const cy = originY + dispH / 2 + offY * dispH;
+    const baseScale = Math.max(dispW / img.naturalWidth, dispH / img.naturalHeight);
+    ctx.translate(cx, cy);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.scale(scale, scale);
+    ctx.drawImage(
+      img,
+      (-img.naturalWidth * baseScale) / 2,
+      (-img.naturalHeight * baseScale) / 2,
+      img.naturalWidth * baseScale,
+      img.naturalHeight * baseScale
+    );
+    ctx.restore();
+  }
+
+  // 이미지 위에 테두리 색을 "링" 모양으로만 덧칠 (안쪽 사각형은 evenodd로 뚫어서 이미지가 그대로 보임)
+  // 안티앨리어싱으로 이미지 클립 가장자리와 테두리 색 가장자리 사이에 실선처럼 보이는
+  // 미세한 이음매가 생기지 않도록, 테두리가 이미지 쪽으로 1px 더 겹치게 그린다.
+  if (borderOn) {
+    const overlapPx = 1;
+    if (isStamp) {
+      const holeInsetPx = borderSeamInsetPx + overlapPx;
+      const holeX = contentX + holeInsetPx;
+      const holeY = contentY + holeInsetPx;
+      const holeW = Math.max(1, contentW - holeInsetPx * 2);
+      const holeH = Math.max(1, contentH - holeInsetPx * 2);
+      ctx.beginPath();
+      tracePath(originX, originY, dispW, dispH, 0, null, true);
+      ctx.rect(holeX, holeY, holeW, holeH);
+      ctx.fillStyle = borderColor;
+      ctx.fill("evenodd");
+    } else {
+      // 하트처럼 곡선인 도형은 안쪽 구멍 경로를 따로 계산해서 evenodd로 뚫는 대신,
+      // 원본 하트 외곽선 자체를 굵게 스트로크한다 — 바깥쪽 절반은 이미 위에서 건
+      // 도형 클립에 의해 저절로 잘려나가고, 안쪽 절반만 테두리 두께만큼 남는다.
+      // 뾰족한 끝·오목한 꼭짓점에서도 캔버스가 직접 이음을 처리해 구멍이 생기지 않는다.
+      const ringWidthPx = borderPx + borderSeamInsetPx + overlapPx;
+      ctx.beginPath();
+      tracePath(originX, originY, dispW, dispH, 0, null, true);
+      ctx.lineJoin = "round";
+      ctx.lineWidth = ringWidthPx * 2;
+      ctx.strokeStyle = borderColor;
+      ctx.stroke();
+    }
+  }
+
+  // 얇은 선 테두리(1중/2중) — 여백(borderOn)이 켜져 있으면 그 안쪽에,
+  // 꺼져 있으면 지금 이미지가 차지하는 영역 기준으로 그린다
+  if (lineBorderMode !== "none") {
+    const baseX = borderOn ? contentX : originX;
+    const baseY = borderOn ? contentY : originY;
+    const baseW = borderOn ? contentW : dispW;
+    const baseH = borderOn ? contentH : dispH;
+    const outerInset = lineBorderInsetMm * pxPerMm;
+    const inset2 = lineBorderInset2Mm * pxPerMm;
+    const lines =
+      lineBorderMode === "double"
+        ? [
+            { inset: outerInset, widthPx: Math.max(0.6, lineBorderWidthMm * pxPerMm), color: lineBorderColor },
+            { inset: inset2, widthPx: Math.max(0.6, lineBorderWidthMm2 * pxPerMm), color: lineBorderColor2 },
+          ]
+        : [{ inset: outerInset, widthPx: Math.max(0.6, lineBorderWidthMm * pxPerMm), color: lineBorderColor }];
+
+    lines.forEach(({ inset, widthPx, color }) => {
+      if (isStamp) {
+        const w = baseW - inset * 2;
+        const h = baseH - inset * 2;
+        if (w > 2 && h > 2) {
+          ctx.strokeStyle = color;
+          ctx.lineWidth = widthPx;
+          ctx.strokeRect(baseX + inset, baseY + inset, w, h);
+        }
+      } else {
+        ctx.beginPath();
+        tracePath(baseX, baseY, baseW, baseH, inset, null);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = widthPx;
+        ctx.stroke();
+      }
+    });
+  }
+  ctx.restore();
+
+  // 2) 톱니 안쪽에 옅은 그림자를 넣어 파인 느낌을 살린다 — 우표 모양에서만 해당
+  // 단, 여백(테두리 색)이 켜져 있을 땐 그 색 위에 어두운 테가 겹쳐 보이지 않도록
+  // 그림자를 이미지 영역 안쪽으로만 한정한다 — 테두리 색 부분은 항상 단일 색으로 보인다.
+  if (isStamp) {
+    ctx.save();
+    traceStampPath(ctx, originX, originY, dispW, dispH, r, spacing, margin);
+    ctx.clip();
+    if (borderOn) {
+      ctx.beginPath();
+      ctx.rect(seamX, seamY, seamW, seamH);
+      ctx.clip();
+    }
+    ctx.strokeStyle = "rgba(0,0,0,0.16)";
+    ctx.lineWidth = Math.max(1, pxPerMm * 0.09);
+    centers.forEach(([cx, cy]) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  return { originX, originY, dispW, dispH };
+}
+
+function StampEditor() {
+  const [stampW, setStampW] = useState(25);
+  const [stampH, setStampH] = useState(22);
+  const [img, setImg] = useState(null);
+  const [offX, setOffX] = useState(0);
+  const [offY, setOffY] = useState(0);
+  const [scale, setScale] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [perforation, setPerforation] = useState("medium");
+  const [borderOn, setBorderOn] = useState(false);
+  const [borderColor, setBorderColor] = useState("#FFFFFF");
+  const [lineBorderOn, setLineBorderOn] = useState(false);
+  const [lineBorderMode, setLineBorderMode] = useState("single");
+  const [lineBorderWidthMm, setLineBorderWidthMm] = useState(0.6);
+  const [lineBorderWidthMm2, setLineBorderWidthMm2] = useState(0.6);
+  const [lineBorderColor, setLineBorderColor] = useState("#FFFFFF");
+  const [lineBorderColor2, setLineBorderColor2] = useState("#FFFFFF");
+  const [lineBorderInsetMm, setLineBorderInsetMm] = useState(1.4);
+  const [lineBorderInset2Mm, setLineBorderInset2Mm] = useState(3.0);
+  const [openColorPicker, setOpenColorPicker] = useState(null);
+  const [pickerHsv, setPickerHsv] = useState({ h: 0, s: 0, v: 1 });
+  const [shape, setShape] = useState("stamp");
+  const [heartStyle, setHeartStyle] = useState(1);
+  const [petalCount, setPetalCount] = useState(5);
+  const [starStyle, setStarStyle] = useState(1);
+  const [calendarBorderColor, setCalendarBorderColor] = useState("#333333");
+  const [calendarHeaderColor, setCalendarHeaderColor] = useState("#F4D9A0");
+  const [calendarSpringColor, setCalendarSpringColor] = useState("#2E3A46");
+  const [calendarBorderWidthMm, setCalendarBorderWidthMm] = useState(1.0);
+  const [calendarInnerShape, setCalendarInnerShape] = useState("rect");
+  const downloadNameCountsRef = useRef({});
+  // 내부 테두리(얇은 선 테두리)는 우표 모양에서만 지원한다 — 하트/꽃에서는 기능 자체를 뺀다
+  const effectiveLineBorderMode = lineBorderOn && shape === "stamp" ? lineBorderMode : "none";
+  // 여백(테두리 색) 역시 우표 모양에서만 지원한다 — 하트/꽃에서는 기능 자체를 뺀다
+  const effectiveBorderOn = borderOn && shape === "stamp";
+
+  const canvasRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const dragState = useRef(null);
+
+  const STAGE = 300;
+
+  const redraw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.width = STAGE;
+    canvas.height = STAGE;
+    const ctx = canvas.getContext("2d");
+    drawStamp(ctx, {
+      canvasW: STAGE,
+      canvasH: STAGE,
+      stampW,
+      stampH,
+      img,
+      offX,
+      offY,
+      scale,
+      rotation,
+      checker: true,
+      shape,
+      heartStyle,
+      petalCount,
+      starStyle,
+      calendarBorderColor,
+      calendarHeaderColor,
+      calendarSpringColor,
+      calendarBorderWidthMm,
+      calendarInnerShape,
+      perforation,
+      borderOn: effectiveBorderOn,
+      borderColor,
+      lineBorderMode: effectiveLineBorderMode,
+      lineBorderWidthMm,
+      lineBorderWidthMm2,
+      lineBorderColor,
+      lineBorderColor2,
+      lineBorderInsetMm,
+      lineBorderInset2Mm,
+    });
+  }, [
+    stampW, stampH, img, offX, offY, scale, rotation, shape, heartStyle, petalCount, starStyle,
+    calendarBorderColor, calendarHeaderColor, calendarSpringColor, calendarBorderWidthMm, calendarInnerShape,
+    perforation, effectiveBorderOn, borderColor,
+    effectiveLineBorderMode, lineBorderWidthMm, lineBorderWidthMm2, lineBorderColor,
+    lineBorderColor2, lineBorderInsetMm, lineBorderInset2Mm,
+  ]);
+
+  useEffect(() => {
+    redraw();
+  }, [redraw]);
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = new window.Image();
+      image.onload = () => {
+        setImg(image);
+        setOffX(0);
+        setOffY(0);
+        setScale(1);
+        setRotation(0);
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const onPointerDown = (e) => {
+    if (!img) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    dragState.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      offX,
+      offY,
+      rectW: rect.width,
+      rectH: rect.height,
+    };
+    canvasRef.current.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e) => {
+    if (!dragState.current) return;
+    const { startX, startY, offX: baseX, offY: baseY, rectW, rectH } = dragState.current;
+    const dx = (e.clientX - startX) / rectW;
+    const dy = (e.clientY - startY) / rectH;
+    setOffX(baseX + dx);
+    setOffY(baseY + dy);
+  };
+  const onPointerUp = () => {
+    dragState.current = null;
+  };
+
+  const resetTransform = () => {
+    setOffX(0);
+    setOffY(0);
+    setScale(1);
+    setRotation(0);
+  };
+  const resetSize = () => {
+    const d = DEFAULT_SIZE[shape] || DEFAULT_SIZE.stamp;
+    setStampW(d.w);
+    setStampH(d.h);
+  };
+  const changeShape = (nextShape) => {
+    setShape(nextShape);
+    const d = DEFAULT_SIZE[nextShape] || DEFAULT_SIZE.stamp;
+    setStampW(d.w);
+    setStampH(d.h);
+  };
+
+  // 색상 피커를 열 때 그 스와치의 현재 색으로 HSV 상태를 맞춰두고,
+  // 이미 열려있는 걸 다시 누르면 닫는다.
+  const toggleColorPicker = (key, currentHex) => {
+    setOpenColorPicker((prev) => {
+      const next = prev === key ? null : key;
+      if (next) setPickerHsv(hexToHsv(currentHex));
+      return next;
+    });
+  };
+
+  const handleSvPointer = (e, onChange) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    const y = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
+    const s = x;
+    const v = 1 - y;
+    setPickerHsv((prev) => {
+      const next = { h: prev.h, s, v };
+      onChange(hsvToHex(next.h, next.s, next.v));
+      return next;
+    });
+  };
+
+  const handleHueChange = (h, onChange) => {
+    setPickerHsv((prev) => {
+      const next = { h, s: prev.s, v: prev.v };
+      onChange(hsvToHex(next.h, next.s, next.v));
+      return next;
+    });
+  };
+
+  const handleDownload = () => {
+    if (!img) return;
+    const pxPerMm = 24;
+    const exportW = Math.round(stampW * pxPerMm);
+    const exportH = Math.round(stampH * pxPerMm);
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = exportW;
+    exportCanvas.height = exportH;
+    const ctx = exportCanvas.getContext("2d");
+    drawStamp(ctx, {
+      canvasW: exportW,
+      canvasH: exportH,
+      stampW,
+      stampH,
+      img,
+      offX,
+      offY,
+      scale,
+      rotation,
+      checker: false,
+      shape,
+      heartStyle,
+      petalCount,
+      starStyle,
+      calendarBorderColor,
+      calendarHeaderColor,
+      calendarSpringColor,
+      calendarBorderWidthMm,
+      calendarInnerShape,
+      perforation,
+      borderOn: effectiveBorderOn,
+      borderColor,
+      lineBorderMode: effectiveLineBorderMode,
+      lineBorderWidthMm,
+      lineBorderWidthMm2,
+      lineBorderColor,
+      lineBorderColor2,
+      lineBorderInsetMm,
+      lineBorderInset2Mm,
+    });
+    exportCanvas.toBlob(async (blob) => {
+      if (!blob) return;
+      try {
+        const shapeNameMap = { stamp: "stamp", heart: "heart", flower: "flower", star: "star", calendar: "calendar" };
+        const baseName = shapeNameMap[shape] || "stamp";
+        const counts = downloadNameCountsRef.current;
+        let filename;
+        if (!(baseName in counts)) {
+          filename = `${baseName}.png`;
+          counts[baseName] = 1;
+        } else {
+          filename = `${baseName}${counts[baseName]}.png`;
+          counts[baseName] += 1;
+        }
+        // 아티팩트 안에서는 downloads 기능으로, 일반 웹(배포본)에서는 링크로 저장한다
+        const downloads = (window.claude && window.claude.use)
+          ? await window.claude.use("downloads").catch(() => null)
+          : null;
+        if (downloads) {
+          await downloads.save({ filename, data: blob });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      } catch (err) {
+        if (err && err.code !== "declined") {
+          console.error("다운로드 실패:", err);
+        }
+      }
+    }, "image/png");
+  };
+
+  const renderColorPicker = (key, value, onChange, T) => {
+    if (openColorPicker !== key) return null;
+    return (
+      <div
+        style={{
+          marginTop: 8,
+          padding: 10,
+          borderRadius: 8,
+          background: T.inputBg,
+          border: `1px solid ${T.pageBg}`,
+        }}
+      >
+        {/* 채도/명도 선택 영역 — 클릭·드래그로 실시간 색상 선택 */}
+        <div
+          onPointerDown={(e) => {
+            e.currentTarget.setPointerCapture(e.pointerId);
+            handleSvPointer(e, onChange);
+          }}
+          onPointerMove={(e) => e.buttons === 1 && handleSvPointer(e, onChange)}
+          style={{
+            position: "relative",
+            width: "100%",
+            height: 120,
+            borderRadius: 6,
+            marginBottom: 10,
+            cursor: "crosshair",
+            background:
+              `linear-gradient(to top, #000, rgba(0,0,0,0)), ` +
+              `linear-gradient(to right, #fff, rgba(255,255,255,0)), ` +
+              `hsl(${pickerHsv.h}, 100%, 50%)`,
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              left: `calc(${pickerHsv.s * 100}% - 7px)`,
+              top: `calc(${(1 - pickerHsv.v) * 100}% - 7px)`,
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              border: "2px solid #fff",
+              boxShadow: "0 0 0 1px rgba(0,0,0,0.4)",
+              pointerEvents: "none",
+            }}
+          />
+        </div>
+        {/* 색상(hue) 슬라이더 */}
+        <input
+          type="range"
+          className="hue-slider"
+          min={0}
+          max={359}
+          value={Math.round(pickerHsv.h)}
+          onChange={(e) => handleHueChange(Number(e.target.value), onChange)}
+          style={{ marginBottom: 10, display: "block" }}
+        />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+          {COLOR_PALETTE.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => {
+                onChange(c);
+                setPickerHsv(hexToHsv(c));
+              }}
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 5,
+                border:
+                  value.toLowerCase() === c.toLowerCase()
+                    ? `2px solid ${T.accent}`
+                    : "none",
+                background: c,
+                cursor: "pointer",
+                padding: 0,
+              }}
+            />
+          ))}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 5,
+              background: value,
+              flexShrink: 0,
+            }}
+          />
+          <input
+            type="text"
+            value={value}
+            spellCheck={false}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            onChange={(e) => {
+              const v = e.target.value;
+              onChange(v);
+              if (/^#[0-9a-fA-F]{6}$/.test(v)) setPickerHsv(hexToHsv(v));
+            }}
+            style={{
+              flex: 1,
+              padding: "6px 8px",
+              borderRadius: 6,
+              border: `1px solid ${T.border}`,
+              background: "#fff",
+              color: T.text,
+              fontSize: 12,
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setOpenColorPicker(null)}
+            style={{
+              padding: "6px 10px",
+              fontSize: 12,
+              color: "#F9F5EF",
+              background: "#FD6574",
+              border: "none",
+              borderRadius: 6,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const P = PANEL_THEMES.light;
+  const T = {
+    pageBg: "#E6E6E4",     // 외부(모바일 바깥) 영역
+    frame: P.panel,        // 내부 바탕색
+    panel: P.panel,        // 내부 바탕색
+    border: "#6C8A9B",     // 그 외
+    text: "#6C8A9B",       // 그 외
+    muted: "#6C8A9B",      // 그 외
+    onPanel: "#6C8A9B",    // 그 외 — 패널 배경 위 글자색 (제목 등)
+    inputBg: P.inputBg,
+    accent: "#FD6574",     // 포인트 버튼 색상
+    accentSoft: "#6C8A9B", // 그 외 — 기본값/초기화 버튼
+    sliderTrack: "#6C8A9B",// 그 외 — 슬라이더 미채움 바탕색
+    checkerA: "#F9F5EF",   // 내부 바탕색
+    checkerB: "#E6E6E4",   // 외부 바탕색
+    disabled: "#6C8A9B",   // 그 외
+    onAccent: "#F9F5EF",   // 버튼 안 글자색
+  };
+
+  return (
+    <div
+      style={{
+        minHeight: "100%",
+        background: T.pageBg,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      }}
+    >
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          background: T.panel,
+          borderBottom: `1px solid ${T.border}`,
+          padding: "5px 12px",
+          fontSize: 9.5,
+          color: T.muted,
+          overflowX: "auto",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            width: "100%",
+          }}
+        >
+          <span style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
+            Copyright 2026. MUJIMUJI Stamp Maker&nbsp;|&nbsp;본 서비스(에디터)의 무단 복제, 확장 및 배포를 금지합니다.&nbsp;|&nbsp;
+            <a
+              href="https://oauka.github.io/newluvbit_public/privacy_policy.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: T.muted }}
+            >
+              개인 정보 처리 방침
+            </a>
+          </span>
+          <span style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
+            문의 및 버그 제보 Mail :{" "}
+            <a href="mailto:mujimuji.purity012@aleeas.com" style={{ color: T.muted }}>
+              mujimuji.purity012@aleeas.com
+            </a>
+          </span>
+        </div>
+      </div>
+      <div
+        style={{
+          width: 380,
+          maxWidth: "100%",
+          borderRadius: 40,
+          background: T.frame,
+          padding: 12,
+          margin: "44px 12px 28px",
+          boxShadow: "0 24px 48px rgba(59,42,32,0.35)",
+        }}
+      >
+        <div
+          style={{
+            background: T.panel,
+            borderRadius: 30,
+            overflow: "hidden",
+            minHeight: 680,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <div style={{ padding: "20px 22px 14px", textAlign: "center" }}>
+            <div
+              style={{
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                fontWeight: 800,
+                fontSize: 20,
+                letterSpacing: "0.06em",
+                color: T.onPanel,
+              }}
+            >
+              STAMP MAKER
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 10 }}>
+              {[
+                { key: "stamp", label: "우표" },
+                { key: "heart", label: "하트" },
+                { key: "flower", label: "꽃" },
+                { key: "star", label: "별" },
+                { key: "calendar", label: "달력" },
+              ].map((opt) => {
+                const active = shape === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    onClick={() => changeShape(opt.key)}
+                    style={{
+                      padding: "5px 12px",
+                      fontSize: 11,
+                      fontWeight: active ? 700 : 500,
+                      color: active ? T.onAccent : T.muted,
+                      background: active ? T.accent : "transparent",
+                      border: `1px solid ${active ? T.accent : T.border}`,
+                      borderRadius: 999,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ padding: "16px 22px 6px", display: "flex", justifyContent: "center" }}>
+            <div style={{ position: "relative", width: STAGE, height: STAGE }}>
+              <canvas
+                ref={canvasRef}
+                width={STAGE}
+                height={STAGE}
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerLeave={onPointerUp}
+                style={{
+                  width: STAGE,
+                  height: STAGE,
+                  touchAction: "none",
+                  cursor: img ? "grab" : "default",
+                  display: "block",
+                  filter: "drop-shadow(0 10px 18px rgba(59,42,32,0.3))",
+                }}
+              />
+              {!img && (
+                <div
+                  style={{
+                    position: "absolute",
+                    ...(shape === "calendar"
+                      ? (() => {
+                          const { imgX, imgY, imgW, imgH } = calendarLayout(
+                            STAGE, STAGE, stampW, stampH, calendarInnerShape
+                          );
+                          return { left: imgX, top: imgY, width: imgW, height: imgH };
+                        })()
+                      : { inset: 0 }),
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    color: T.muted,
+                    pointerEvents: "none",
+                  }}
+                >
+                  <ImagePlaceholderIcon size={26} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ padding: "8px 22px 4px" }}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFile}
+              style={{ display: "none" }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                width: "100%",
+                padding: "11px 0",
+                background: T.accent,
+                color: T.onAccent,
+                border: "none",
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                cursor: "pointer",
+              }}
+            >
+              <Upload size={16} />
+              이미지 선택
+            </button>
+            <div style={{ textAlign: "center", fontSize: 11, color: T.muted, marginTop: 8 }}>
+              드래그로 위치 조절
+            </div>
+          </div>
+
+          <div style={{ padding: "18px 22px 0", flex: 1 }}>
+            <div style={{ paddingTop: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: T.muted, whiteSpace: "nowrap" }}>
+                  사이즈
+                </span>
+                <input
+                  type="number"
+                  value={stampW}
+                  min={5}
+                  max={50}
+                  onChange={(e) => setStampW(Math.min(50, Number(e.target.value) || 1))}
+                  style={{
+                    width: 46,
+                    padding: "7px 6px",
+                    borderRadius: 6,
+                    border: `1px solid ${T.border}`,
+                    background: "#FFFFFF",
+                    color: T.text,
+                    fontSize: 13,
+                    textAlign: "center",
+                  }}
+                />
+                <span style={{ fontSize: 12, color: T.muted }}>X</span>
+                <input
+                  type="number"
+                  value={stampH}
+                  min={5}
+                  max={50}
+                  onChange={(e) => setStampH(Math.min(50, Number(e.target.value) || 1))}
+                  style={{
+                    width: 46,
+                    padding: "7px 6px",
+                    borderRadius: 6,
+                    border: `1px solid ${T.border}`,
+                    background: "#FFFFFF",
+                    color: T.text,
+                    fontSize: 13,
+                    textAlign: "center",
+                  }}
+                />
+                <span style={{ fontSize: 11, color: T.muted, whiteSpace: "nowrap" }}>mm(최대 50mm)</span>
+                <button
+                  onClick={resetSize}
+                  style={{
+                    marginLeft: "auto",
+                    padding: "7px 10px",
+                    fontSize: 12,
+                    color: T.accentSoft,
+                    background: "transparent",
+                    border: `1px solid ${T.accentSoft}`,
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  기본값
+                </button>
+              </div>
+            </div>
+
+            <div style={{ paddingTop: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: SLIDER_ROW_GAP, marginBottom: 10 }}>
+                <span style={{ fontSize: 12, color: T.muted, width: SLIDER_LABEL_WIDTH, flexShrink: 0, whiteSpace: "nowrap" }}>
+                  확대/축소
+                </span>
+                <input
+                  type="range"
+                  className="ui-slider"
+                  min={0.5}
+                  max={3}
+                  step={0.05}
+                  value={scale}
+                  onChange={(e) => setScale(Number(e.target.value))}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    "--track-color": T.sliderTrack,
+                    "--thumb-color": T.accent,
+                    "--fill-percent": `${((scale - 0.5) / (3 - 0.5)) * 100}%`,
+                  }}
+                />
+                <span style={{ fontSize: 12, color: T.muted, width: 42, textAlign: "right", flexShrink: 0 }}>
+                  {scale.toFixed(2)}x
+                </span>
+                <span style={{ width: SLIDER_SLOT_WIDTH, display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => setScale(1)}
+                    style={{
+                      padding: "5px 10px",
+                      fontSize: 11,
+                      color: T.accentSoft,
+                      background: "transparent",
+                      border: `1px solid ${T.accentSoft}`,
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    1.00x
+                  </button>
+                </span>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: SLIDER_ROW_GAP }}>
+                <span style={{ fontSize: 12, color: T.muted, width: SLIDER_LABEL_WIDTH, flexShrink: 0, whiteSpace: "nowrap" }}>
+                  회전
+                </span>
+                <input
+                  type="range"
+                  className="ui-slider"
+                  min={-180}
+                  max={180}
+                  step={1}
+                  value={rotation}
+                  onChange={(e) => setRotation(Number(e.target.value))}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    "--track-color": T.sliderTrack,
+                    "--thumb-color": T.accent,
+                    "--fill-percent": `${((rotation - -180) / (180 - -180)) * 100}%`,
+                  }}
+                />
+                <span style={{ fontSize: 12, color: T.muted, width: 42, textAlign: "right", flexShrink: 0 }}>
+                  {rotation}°
+                </span>
+                <span style={{ width: SLIDER_SLOT_WIDTH, display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => setRotation(0)}
+                    style={{
+                      padding: "5px 10px",
+                      fontSize: 11,
+                      color: T.accentSoft,
+                      background: "transparent",
+                      border: `1px solid ${T.accentSoft}`,
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    0°
+                  </button>
+                </span>
+              </div>
+            </div>
+
+            {shape === "stamp" && (
+              <div style={{ paddingTop: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: T.muted, whiteSpace: "nowrap" }}>
+                    테두리 간격
+                  </span>
+                  <div style={{ display: "flex", gap: 6, flex: 1 }}>
+                    {Object.entries(PERFORATION_LEVELS).map(([key, level]) => {
+                      const active = perforation === key;
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => setPerforation(key)}
+                          style={{
+                            flex: 1,
+                            padding: "8px 0",
+                            fontSize: 12,
+                            fontWeight: active ? 700 : 500,
+                            color: active ? T.onAccent : T.muted,
+                            background: active ? T.accent : "transparent",
+                            border: `1px solid ${active ? T.accent : T.border}`,
+                            borderRadius: 7,
+                            cursor: "pointer",
+                            transition: "background 0.15s, color 0.15s",
+                          }}
+                        >
+                          {level.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {shape === "stamp" && (
+            <div style={{ paddingTop: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: T.muted,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={borderOn}
+                    onChange={(e) => setBorderOn(e.target.checked)}
+                    style={{ width: 16, height: 16, accentColor: T.accent, cursor: "pointer" }}
+                  />
+                  여백
+                </label>
+                <div
+                  style={{
+                    width: 44,
+                    height: 26,
+                    borderRadius: 4,
+                    background: "#fff",
+                    border: `1px solid ${T.pageBg}`,
+                    position: "relative",
+                    overflow: "hidden",
+                    boxSizing: "border-box",
+                    cursor: borderOn ? "pointer" : "default",
+                  }}
+                  title={borderOn ? "색상 변경" : "여백을 켜야 색상을 바꿀 수 있음"}
+                  onClick={() => borderOn && toggleColorPicker("border", borderColor)}
+                >
+                  {borderOn ? (
+                    <div style={{ position: "absolute", inset: 0, background: borderColor }} />
+                  ) : (
+                    <>
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "50%",
+                          left: "50%",
+                          width: 16,
+                          height: 2.5,
+                          background: "#E4453A",
+                          borderRadius: 2,
+                          transform: "translate(-50%, -50%) rotate(45deg)",
+                        }}
+                      />
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "50%",
+                          left: "50%",
+                          width: 16,
+                          height: 2.5,
+                          background: "#E4453A",
+                          borderRadius: 2,
+                          transform: "translate(-50%, -50%) rotate(-45deg)",
+                        }}
+                      />
+                    </>
+                  )}
+                </div>
+              </div>
+              {renderColorPicker("border", borderColor, setBorderColor, T)}
+            </div>
+            )}
+
+            {shape === "heart" && (
+              <div style={{ paddingTop: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: T.muted, whiteSpace: "nowrap" }}>
+                    모양
+                  </span>
+                  <div style={{ display: "flex", gap: 6, flex: 1 }}>
+                    {HEART_VARIANTS.map((pts, idx) => {
+                      const active = heartStyle === idx + 1;
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => setHeartStyle(idx + 1)}
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "6px 0",
+                            background: active ? T.accent : "transparent",
+                            border: `1px solid ${active ? T.accent : T.border}`,
+                            borderRadius: 7,
+                            cursor: "pointer",
+                            transition: "background 0.15s, color 0.15s",
+                            color: active ? T.onAccent : T.muted,
+                          }}
+                        >
+                          <svg width="26" height="26" viewBox="0 0 26 26">
+                            <path d={curvePointsToIconPath(pts)} fill="currentColor" />
+                          </svg>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {shape === "flower" && (
+              <div style={{ paddingTop: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: T.muted, whiteSpace: "nowrap" }}>
+                    잎 개수
+                  </span>
+                  <div style={{ display: "flex", gap: 6, flex: 1 }}>
+                    {[4, 5, 6].map((n) => {
+                      const active = petalCount === n;
+                      const pts = FLOWER_VARIANTS_BY_PETALS[n];
+                      return (
+                        <button
+                          key={n}
+                          onClick={() => setPetalCount(n)}
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "6px 0",
+                            background: active ? T.accent : "transparent",
+                            border: `1px solid ${active ? T.accent : T.border}`,
+                            borderRadius: 7,
+                            cursor: "pointer",
+                            transition: "background 0.15s, color 0.15s",
+                            color: active ? T.onAccent : T.muted,
+                          }}
+                        >
+                          <svg width="26" height="26" viewBox="0 0 26 26">
+                            <path d={curvePointsToIconPath(pts)} fill="currentColor" />
+                          </svg>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {shape === "star" && (
+              <div style={{ paddingTop: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: T.muted, whiteSpace: "nowrap" }}>
+                    모양
+                  </span>
+                  <div style={{ display: "flex", gap: 6, flex: 1 }}>
+                    {STAR_VARIANTS.map((pts, idx) => {
+                      const active = starStyle === idx + 1;
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => setStarStyle(idx + 1)}
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "6px 0",
+                            background: active ? T.accent : "transparent",
+                            border: `1px solid ${active ? T.accent : T.border}`,
+                            borderRadius: 7,
+                            cursor: "pointer",
+                            transition: "background 0.15s, color 0.15s",
+                            color: active ? T.onAccent : T.muted,
+                          }}
+                        >
+                          <svg width="26" height="26" viewBox="0 0 26 26">
+                            <path d={curvePointsToIconPath(pts)} fill="currentColor" />
+                          </svg>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {shape === "calendar" && (
+              <div style={{ paddingTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div>
+                  <SliderRow
+                    label="테두리"
+                    value={calendarBorderWidthMm}
+                    min={0.3}
+                    max={3}
+                    step={0.1}
+                    unit="mm"
+                    onChange={setCalendarBorderWidthMm}
+                    T={T}
+                    swatch={
+                      <SwatchBox
+                        color={calendarBorderColor}
+                        T={T}
+                        active={openColorPicker === "calBorder"}
+                        onClick={() => toggleColorPicker("calBorder", calendarBorderColor)}
+                      />
+                    }
+                  />
+                  {renderColorPicker("calBorder", calendarBorderColor, setCalendarBorderColor, T)}
+                </div>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: T.muted }}>
+                        위쪽 바탕색
+                      </span>
+                      <SwatchBox
+                        color={calendarHeaderColor}
+                        T={T}
+                        active={openColorPicker === "calHeader"}
+                        onClick={() => toggleColorPicker("calHeader", calendarHeaderColor)}
+                      />
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: T.muted }}>
+                        스프링 색
+                      </span>
+                      <SwatchBox
+                        color={calendarSpringColor}
+                        T={T}
+                        active={openColorPicker === "calSpring"}
+                        onClick={() => toggleColorPicker("calSpring", calendarSpringColor)}
+                      />
+                    </div>
+                  </div>
+                  {renderColorPicker("calHeader", calendarHeaderColor, setCalendarHeaderColor, T)}
+                  {renderColorPicker("calSpring", calendarSpringColor, setCalendarSpringColor, T)}
+                </div>
+
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: T.muted, marginBottom: 8 }}>
+                    이미지 영역 모양
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {[
+                      { key: "rect", label: "사각형" },
+                      { key: "stamp", label: "우표" },
+                      { key: "heart", label: "하트" },
+                    ].map((opt) => {
+                      const active = calendarInnerShape === opt.key;
+                      return (
+                        <button
+                          key={opt.key}
+                          onClick={() => setCalendarInnerShape(opt.key)}
+                          style={{
+                            flex: 1,
+                            padding: "6px 0",
+                            fontSize: 11,
+                            fontWeight: active ? 700 : 500,
+                            color: active ? T.onAccent : T.muted,
+                            background: active ? T.accent : "transparent",
+                            border: `1px solid ${active ? T.accent : T.border}`,
+                            borderRadius: 7,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {shape === "stamp" && (
+            <div style={{ paddingTop: 16 }}>
+              {/* 체크박스로 켜고 끄되, 버튼이 생기고 없어져도 이 줄의 높이는 항상 고정 */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 34 }}>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: T.muted,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={lineBorderOn}
+                    onChange={(e) => setLineBorderOn(e.target.checked)}
+                    style={{ width: 16, height: 16, accentColor: T.accent, cursor: "pointer" }}
+                  />
+                  내부 테두리
+                </label>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    flex: 1,
+                    opacity: lineBorderOn ? 1 : 0,
+                    pointerEvents: lineBorderOn ? "auto" : "none",
+                    transition: "opacity 0.15s",
+                  }}
+                >
+                  {[
+                    { key: "single", label: "테두리 1" },
+                    { key: "double", label: "테두리 2" },
+                  ].map((opt) => {
+                    const active = lineBorderMode === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        onClick={() => setLineBorderMode(opt.key)}
+                        style={{
+                          flex: 1,
+                          padding: "8px 0",
+                          fontSize: 12,
+                          fontWeight: active ? 700 : 500,
+                          color: active ? T.onAccent : T.muted,
+                          background: active ? T.accent : "transparent",
+                          border: `1px solid ${active ? T.accent : T.border}`,
+                          borderRadius: 7,
+                          cursor: "pointer",
+                          transition: "background 0.15s, color 0.15s",
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 두께 · 간격 슬라이더 줄 — 한 줄에 라벨 + 슬라이더 + 값(+색상 박스) */}
+              <div
+                style={{
+                  paddingTop: 10,
+                  opacity: lineBorderOn ? 1 : 0,
+                  pointerEvents: lineBorderOn ? "auto" : "none",
+                  transition: "opacity 0.15s",
+                }}
+              >
+                <SliderRow
+                  label={lineBorderMode === "double" ? "테두리 1 두께" : "선 두께"}
+                  value={lineBorderWidthMm}
+                  min={0.2}
+                  max={2}
+                  step={0.1}
+                  unit="mm"
+                  onChange={setLineBorderWidthMm}
+                  T={T}
+                  swatch={
+                    <SwatchBox
+                      color={lineBorderColor}
+                      T={T}
+                      active={openColorPicker === "line1"}
+                      onClick={() => toggleColorPicker("line1", lineBorderColor)}
+                    />
+                  }
+                />
+                {renderColorPicker("line1", lineBorderColor, setLineBorderColor, T)}
+
+                {lineBorderMode === "double" && (
+                  <>
+                    <SliderRow
+                      label="테두리 2 두께"
+                      value={lineBorderWidthMm2}
+                      min={0.2}
+                      max={2}
+                      step={0.1}
+                      unit="mm"
+                      onChange={setLineBorderWidthMm2}
+                      T={T}
+                      swatch={
+                        <SwatchBox
+                          color={lineBorderColor2}
+                          T={T}
+                          active={openColorPicker === "line2"}
+                          onClick={() => toggleColorPicker("line2", lineBorderColor2)}
+                        />
+                      }
+                    />
+                    {renderColorPicker("line2", lineBorderColor2, setLineBorderColor2, T)}
+                  </>
+                )}
+
+                <SliderRow
+                  label={lineBorderMode === "double" ? "테두리 1 간격" : "간격"}
+                  value={lineBorderInsetMm}
+                  min={0.3}
+                  max={4}
+                  step={0.1}
+                  unit="mm"
+                  onChange={setLineBorderInsetMm}
+                  T={T}
+                />
+
+                {lineBorderMode === "double" && (
+                  <SliderRow
+                    label="테두리 2 간격"
+                    value={lineBorderInset2Mm}
+                    min={0.3}
+                    max={4}
+                    step={0.1}
+                    unit="mm"
+                    onChange={setLineBorderInset2Mm}
+                    T={T}
+                  />
+                )}
+              </div>
+            </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10, paddingTop: 20, paddingBottom: 22 }}>
+              <button
+                onClick={resetTransform}
+                style={{
+                  flex: 1,
+                  padding: "12px 0",
+                  background: "transparent",
+                  color: T.accentSoft,
+                  border: `1px solid ${T.accentSoft}`,
+                  borderRadius: 8,
+                  fontSize: 13,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  cursor: "pointer",
+                }}
+              >
+                <RotateCcw size={14} />
+                초기화
+              </button>
+              <button
+                onClick={handleDownload}
+                disabled={!img}
+                style={{
+                  flex: 1.4,
+                  padding: "12px 0",
+                  background: img ? T.accent : T.disabled,
+                  color: T.panel,
+                  border: "none",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  cursor: img ? "pointer" : "not-allowed",
+                }}
+              >
+                <Download size={14} />
+                PNG 다운로드
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<StampEditor />);
+</script>
+
+</body></html>
